@@ -45,6 +45,15 @@ instance Attributes Main where
 instance RecordCommand Main where
     mode_summary _ = "Simple program to convert RGBA encoded .png images into quickfort blueprints"
 
+main = getArgs >>= executeR Main {} >>= \opts ->
+    do
+        aliasStr <- L.readFile "alias.json"
+        configStr <- L.readFile "pngconfig_default.json"
+        dict <- return (constructDict aliasStr configStr)
+        imgStrs <- mapM B.readFile $ words $ input opts
+        (strs,imgs) <- return ( partitionEithers $ map decodePng imgStrs )
+        putStrLn $ show strs
+
 data Phase = All
            | Dig
            | Build
@@ -79,6 +88,9 @@ instance FromJSON ConfigLists where
                           v .: "place" <*>
                           v .: "query"
     parseJSON _          = mzero
+
+
+deriving instance Ord PixelRGBA8
 
 
 constructDict :: L.ByteString -> L.ByteString -> Maybe CommandDictionary
@@ -150,18 +162,6 @@ constructDict alias config = do
               where (a,b) = break (== ':') ks
 
     listToPixel (r:g:b:a:[]) = PixelRGBA8 r g b a
-
-
-deriving instance Ord PixelRGBA8
-
-main = getArgs >>= executeR Main {} >>= \opts ->
-    do
-        aliasStr <- L.readFile "alias.json"
-        configStr <- L.readFile "pngconfig_default.json"
-        dict <- return (constructDict aliasStr configStr)
-        imgStrs <- mapM B.readFile $ words $ input opts
-        (strs,imgs) <- return ( partitionEithers $ map decodePng imgStrs )
-        putStrLn $ show strs
 
 
 parseDig :: [Int] -> (Int -> String) -> Maybe String
