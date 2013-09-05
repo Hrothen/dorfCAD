@@ -19,8 +19,7 @@ import Control.Monad
 
 
 data Main = Main { start :: [Int], input :: String,
-                   output :: String, phases :: String,
-                   singlePhasePNG :: Bool }
+                   output :: String, phases :: String }
     deriving (Typeable, Data, Eq)
 
 instance Attributes Main where
@@ -40,11 +39,7 @@ instance Attributes Main where
         phases         %> [ Help "Phase to create a blueprint for.",
                             ArgHelp "[All|Dig|Build|Place|Query]",
                             Long ["phase"],
-                            Short ['p'] ],
-        singlePhasePNG %> [ Help "If True, a pixel represents a single instruction. If False \
-                                 \a pixel represents an instruction for each phase",
-                            Long ["single-phase-png"],
-                            Default False ]
+                            Short ['p'] ]
         ]
 
 instance RecordCommand Main where
