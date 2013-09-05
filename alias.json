@@ -1,36 +1,34 @@
 {
-	"Designate" : {
-		"mine": "d",
-		"channel":,
-		"remove_up_stairs/ramps":,
-		"upward_stairway":,
-		"downward_stairway":,
-		"up/down_stairway":,
-		"upward_ramp":,
-		"chop_down_trees":,
-		"gather_plants":,
-		"smooth_stone":,
-		"engrave_stone":,
-		"carve_fortifications":,
-		"toggle_engravings":,
-		"remove_designation":,
-		"remove_construction":,
-		"set_building/item_properties": {
-			"reclaim_items/buildings":,
-			"forbid_items/buildings":,
-			"melt_items":,
-			"remove_melt":,
-			"dump_items":,
-			"remove_dump":,
-			"hide_items/buildings":,
-			"unhide_items/buildings":
-			},
-		"set_traffic_areas": {
-			"high_traffic_area":,
-			"normal_traffic_area":,
-			"low_traffic_area":,
-			"restricted_traffic_area":
-			}
-		}
+	"designate" : [
+		{"d": "mine"},
+		{"h": "channel"},
+		{"z": "remove_up_stairs/ramps"},
+		{"u": "upward_stairway"},
+		{"j": "downward_stairway"},
+		{"i": "up/down_stairway"},
+		{"r": "upward_ramp"},
+		{"t": "chop_down_trees"},
+		{"p": "gather_plants"},
+		{"s": "smooth_stone"},
+		{"e": "engrave_stone"},
+		{"a": "carve_fortifications"},
+		{"v": "toggle_engravings"},
+		{"x": "remove_designation"},
+		{"n": "remove_construction"},
+		//set_building/item_properties
+		{"bc": "reclaim_items/buildings"},
+		{"bf": "forbid_items/buildings"},
+		{"bm": "melt_items"},
+		{"bM": "remove_melt"},
+		{"bd": "dump_items"},
+		{"bD": "remove_dump"},
+		{"bh": "hide_items/buildings"},
+		{"bH": "unhide_items/buildings"},
+		//set_traffic_areas
+		{"oh": "high_traffic_area"},
+		{"on": "normal_traffic_area"},
+		{"ol": "low_traffic_area"},
+		{"or": "restricted_traffic_area"}
+		]
 
 }
