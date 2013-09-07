@@ -83,7 +83,7 @@ imageToList :: (PixelRGBA8 -> Maybe String) -> DynamicImage -> Either String Ima
 imageToList dict (ImageRGBA8 img) = Right $ convertVector (imageData img)
   where convertVector = splitList (width) . (map (replaceNothings . dict)) . (toPixelList . V.toList)
         width = imageWidth img
-        replaceNothings = maybe emptyCell id
+        replaceNothings = maybe emptyCell id -- replace a result of Nothing with an empty cell
 
         -- convert list of Word8 values into a list of RGBA8 Pixels
         toPixelList [] = []
@@ -118,11 +118,10 @@ data CommandDictionary = CommandDictionary {
                        , qry :: M.Map PixelRGBA8 String }
 
 translate :: CommandDictionary -> Phase -> PixelRGBA8 -> Maybe String
-translate dict Dig key   = M.lookup key (des dict)
+translate dict Dig   key = M.lookup key (des dict)
 translate dict Build key = M.lookup key (bld dict)
 translate dict Place key = M.lookup key (plc dict)
 translate dict Query key = M.lookup key (qry dict)
-translate _ _ _          = Nothing --might not be the best fallback
 
 
 data ConfigLists = ConfigLists { designate :: [(String,[String])]
