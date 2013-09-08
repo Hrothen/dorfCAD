@@ -80,6 +80,8 @@ type Position = Maybe (Int,Int)
 
 emptyCell = ""
 
+-- This header goes at the top of each Blueprint and tells
+-- quickfort where to start and in what mode to run
 header :: Position -> Int -> Phase -> String
 header pos w p = '#':mode ++ start ++ empties
   where empties = replicate (w-1) ','
@@ -111,17 +113,8 @@ pngconvert pos imgs phase dict | null errs = Left (intercalate "\n" errs)
         extractDims i = (dynamicMap imageWidth i,dynamicMap imageHeight i)
         csvList = map (imageToList (translate dict phase)) imgs
 
--- convert a list of ImageStrings into four Bytestring encoded CSVs
-{-
-csvconvert :: [Phase] -> [[ImageString]] -> [Either String Blueprint]
-csvconvert [] [] = []
-csvconvert phases imgs | length phases /= length imgs =
-    [Left "Internal error: phase list and blueprint list are different sizes"]
-                       | otherwise = csvconvert' phases imgs
-  where csvconvert' :: [Phase] -> [[ImageString]] -> [Either String Blueprint]
-        csvconvert' ps is = map (toCSV is) ps
--}
 
+-- concat a list of ImageStrings into a single csv Blueprint
 toCSV :: Position -> Int -> Phase -> [ImageString] -> Blueprint
 toCSV s w p imgs = L.pack $ header s w p ++ intercalate uplevel imgs
   where uplevel = "#>" ++ replicate (w-1) ','
@@ -139,14 +132,6 @@ imageToList dict (ImageRGBA8 img) = Right $ convertVector (imageData img)
 --catch non RGBA8 images and give an error message
 imageToList _ _ = Left "Unsupported png format, use RGBA8 encoding"
 
-
--- split a list into lists of length i
-{-
-splitList :: Int -> [a] -> [[a]]
-splitList _ []  = []
-splitList i ls  = row : splitList i rest
-    where (row,rest) = splitAt i ls
--}
 
 -- take a list of comma delimited strings and return a string with newlines added
 csvify :: (Int) -> [String] -> String
@@ -169,6 +154,8 @@ data Phase = Dig
     deriving (Typeable, Data, Eq, Read, Show)
 
 
+-- the CommandDictionary describes a mapping from pixels to strings
+-- it is accessed via the translate function
 data CommandDictionary = CommandDictionary {
                          des :: M.Map PixelRGBA8 String
                        , bld :: M.Map PixelRGBA8 String
