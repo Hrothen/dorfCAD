@@ -10,10 +10,10 @@ import Data.Either
 import Data.Maybe
 import Data.Tuple
 import Data.Aeson
-import Data.List(unzip4)
+import Data.List(unzip,intercalate,intersperse)
 import Codec.Picture.Png(decodePng)
 import Codec.Picture.Types
-import qualified Data.ByteString.Lazy as L
+import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.ByteString as B
 import System.Environment(getArgs)
 import System.Console.CmdLib
@@ -51,37 +51,85 @@ main = getArgs >>= executeR Main {} >>= \opts ->
     do
         aliasStr <- L.readFile "alias.json"
         configStr <- L.readFile "pngconfig_default.json"
+        startPos <- return (toTup $ start opts)
+        outStr <- return $ genOutfileName (input opts) (output opts)
         dict <- return (constructDict aliasStr configStr)
-        imgStrs <- mapM B.readFile $ words $ input opts
-        putStrLn "placeholder"
+        imgFileStrs <- mapM B.readFile $ words $ input opts
+        imgStrs <- return $ rights $ map decodePng imgFileStrs
+        (errs,imgs) <- return $ partitionEithers
+            $ convertpngs startPos imgStrs (phases opts) (fromJust dict)
+        if (not . null) errs
+        then putStrLn $ concat errs
+        else mapM_ (writeFile' outStr) imgs
+  where genOutfileName i "" = head (words i) ++ "-"
+        genOutfileName _ s  = s ++ "-"
+        toTup ls | null ls = Nothing
+                 | length ls /= 2 = Nothing
+                 | otherwise = Just (head ls,last ls)
+        writeFile' :: String -> Blueprint -> IO ()
+        writeFile' outStr img = let name = outStr ++
+                                           (L.unpack $ L.takeWhile (','/=) (L.tail img)) ++
+                                           ".csv"
+                                in do L.writeFile name img
         
 
-type ImageString = [[String]]
+type ImageString = String
 type LBstr = L.ByteString
-type Blueprint = (LBstr,LBstr,LBstr,LBstr)
+type Blueprint = L.ByteString
+type Position = Maybe (Int,Int)
 
 emptyCell = ""
 
+header :: Position -> Int -> Phase -> String
+header pos w p = '#':mode ++ start ++ empties
+  where empties = replicate (w-1) ','
+        start | pos == Nothing = ""
+              | otherwise = "start" ++ show (fromJust pos)
+        mode  | p == Dig = "dig"
+              | p == Build = "build"
+              | p == Place = "place"
+              | otherwise = "query"
 
-convertpngs :: [DynamicImage] -> String -> CommandDictionary -> [Either String Blueprint]
-convertpngs imgs phases dict = map (csvconvert p) convertImage
-  where convertImage = map (\phase -> pngconvert imgs phase dict) p
+
+convertpngs :: Position -> [DynamicImage] -> String -> CommandDictionary -> [Either String Blueprint]
+convertpngs pos imgs phases dict | null err = convertImage
+                                 | otherwise = map Left (intersperse "\n" err)
+  where convertImage = map (\phase -> pngconvert pos imgs phase dict) p
+        (err,images) = partitionEithers convertImage
         p = parsePhases phases
 
--- convert a list of images into a list of lists of strings, given a dictionary and
--- a phase to convert for
-pngconvert :: [DynamicImage] -> Phase -> CommandDictionary -> [Either String ImageString]
-pngconvert imgs phase dict = map (imageToList (translate dict phase)) imgs
+-- convert a list of images into a blueprint
+pngconvert :: Position -> [DynamicImage] -> Phase -> CommandDictionary -> Either String Blueprint
+pngconvert pos imgs phase dict | null errs = Left (intercalate "\n" errs)
+                               | any (w/=) width || any (h/=) height = Left
+                                "Error: not all images have the same dimensions"
+                               | otherwise = Right $ toCSV pos w phase images
+  where (errs,images) = partitionEithers csvList
+        w = head width
+        h = head height
+        (width,height) = unzip $ map extractDims imgs
+        extractDims i = (dynamicMap imageWidth i,dynamicMap imageHeight i)
+        csvList = map (imageToList (translate dict phase)) imgs
 
 -- convert a list of ImageStrings into four Bytestring encoded CSVs
-csvconvert :: [Phase] -> [Either String ImageString] -> Either String Blueprint
-csvconvert phases = undefined
+{-
+csvconvert :: [Phase] -> [[ImageString]] -> [Either String Blueprint]
+csvconvert [] [] = []
+csvconvert phases imgs | length phases /= length imgs =
+    [Left "Internal error: phase list and blueprint list are different sizes"]
+                       | otherwise = csvconvert' phases imgs
+  where csvconvert' :: [Phase] -> [[ImageString]] -> [Either String Blueprint]
+        csvconvert' ps is = map (toCSV is) ps
+-}
 
+toCSV :: Position -> Int -> Phase -> [ImageString] -> Blueprint
+toCSV s w p imgs = L.pack $ header s w p ++ intercalate uplevel imgs
+  where uplevel = "#>" ++ replicate (w-1) ','
 
 -- convert a RGBA8 image to a list of lists of strings
 imageToList :: (PixelRGBA8 -> Maybe String) -> DynamicImage -> Either String ImageString
 imageToList dict (ImageRGBA8 img) = Right $ convertVector (imageData img)
-  where convertVector = splitList (width) . (map (replaceNothings . dict)) . (toPixelList . V.toList)
+  where convertVector = csvify (width) . (map ((',':) . replaceNothings . dict)) . (toPixelList . V.toList)
         width = imageWidth img
         replaceNothings = maybe emptyCell id -- replace a result of Nothing with an empty cell
 
@@ -93,10 +141,20 @@ imageToList _ _ = Left "Unsupported png format, use RGBA8 encoding"
 
 
 -- split a list into lists of length i
+{-
 splitList :: Int -> [a] -> [[a]]
 splitList _ []  = []
 splitList i ls  = row : splitList i rest
     where (row,rest) = splitAt i ls
+-}
+
+-- take a list of comma delimited strings and return a string with newlines added
+csvify :: (Int) -> [String] -> String
+csvify _ [] = ""
+-- we add a header to the csv later, and the last line of the file doesn't
+-- need a newline, so we can prepend it for a small savings
+csvify i ls = '\n' : (concat row) ++ csvify i rest
+  where (row,rest) = splitAt i ls
 
 
 parsePhases :: String -> [Phase]
