@@ -29,6 +29,8 @@
 		{"on": "normal_traffic_area"},
 		{"ol": "low_traffic_area"},
 		{"or": "restricted_traffic_area"}
-		]
-
+		],
+	"build" : [],
+	"place" : [],
+	"query" : []
 }

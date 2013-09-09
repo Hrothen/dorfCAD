@@ -16,7 +16,7 @@
 		{"toggle_engravings":[]},
 		{"remove_designation":[]},
 		{"remove_construction":[]},
-		//"set_building/item_properties": }{
+		//set_building/item_properties
 		{"reclaim_items/buildings":[]},
 		{"forbid_items/buildings":[]},
 		{"melt_items":[]},
@@ -25,10 +25,14 @@
 		{"remove_dump":[]},
 		{"hide_items/buildings":[]},
 		{"unhide_items/buildings":[]},
-		//"set_traffic_areas": }{
+		//set_traffic_areas
 		{"high_traffic_area":[]},
 		{"normal_traffic_area":[]},
 		{"low_traffic_area":[]},
 		{"restricted_traffic_area":[]}
-		]
+		],
+	"build" : [],
+	"place" : [],
+	"query" : []
+}
 	}
