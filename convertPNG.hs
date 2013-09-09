@@ -50,7 +50,7 @@ instance RecordCommand Main where
 main = getArgs >>= executeR Main {} >>= \opts ->
     do
         aliasStr <- L.readFile "alias.json"
-        configStr <- L.readFile "pngconfig_default.json"
+        configStr <- L.readFile "pngconfig.json"
         startPos <- return (toTup $ start opts)
         outStr <- return $ genOutfileName (input opts) (output opts)
         dict <- return (constructDict aliasStr configStr)
@@ -205,7 +205,6 @@ constructDict alias config = do
                           , expandPixelList (place cs)
                           , expandPixelList (query cs) )
 
-    --buildCommandDict' :: (a,a,a,a) -> (b,b,b,b) -> Maybe CommandDictionary
     buildCommandDict' (a,b,c,d) (w,x,y,z) = do 
        designate' <- genMap a w
        build'     <- genMap b x
@@ -220,8 +219,7 @@ constructDict alias config = do
             doLookup (pix,str) = (pix,M.lookup str dict)
             dict = M.fromList al
 
-            pred (_,Nothing) = False
-            pred (_,Just a)  = True
+            pred (_,a) = isJust a
 
             noMaybe (a,b) = (a,fromJust b)
 
@@ -229,8 +227,9 @@ constructDict alias config = do
     expandList = concatMap (expand . swap)
 
     expandPixelList :: [(String,[String])] -> [(PixelRGBA8,String)]
-    expandPixelList = map (toPixel) . expandList
-        
+    expandPixelList = concatMap (toPixel . expand . swap)
+    
+    -- expand a tuple holding a list of keys and a value into a list of key value pairs    
     expand :: ([String],String) -> [(String,String)]
     expand ([],_) = []
     expand ((k:ks),val) = (k,val) : expand (ks,val)
