@@ -1,36 +1,38 @@
 {
-	"designate" : [
-		{"d": "mine"},
-		{"h": "channel"},
-		{"z": "remove_up_stairs/ramps"},
-		{"u": "upward_stairway"},
-		{"j": "downward_stairway"},
-		{"i": "up/down_stairway"},
-		{"r": "upward_ramp"},
-		{"t": "chop_down_trees"},
-		{"p": "gather_plants"},
-		{"s": "smooth_stone"},
-		{"e": "engrave_stone"},
-		{"a": "carve_fortifications"},
-		{"v": "toggle_engravings"},
-		{"x": "remove_designation"},
-		{"n": "remove_construction"},
-		//set_building/item_properties
-		{"bc": "reclaim_items/buildings"},
-		{"bf": "forbid_items/buildings"},
-		{"bm": "melt_items"},
-		{"bM": "remove_melt"},
-		{"bd": "dump_items"},
-		{"bD": "remove_dump"},
-		{"bh": "hide_items/buildings"},
-		{"bH": "unhide_items/buildings"},
-		//set_traffic_areas
-		{"oh": "high_traffic_area"},
-		{"on": "normal_traffic_area"},
-		{"ol": "low_traffic_area"},
-		{"or": "restricted_traffic_area"}
-		],
-	"build" : [],
-	"place" : [],
-	"query" : []
+	"designate" : {
+		"d": ["mine"],
+		"h": ["channel"],
+		"z": ["remove_up_stairs/ramps"],
+		"u": ["upward_stairway"],
+		"j": ["downward_stairway"],
+		"i": ["up/down_stairway"],
+		"r": ["upward_ramp"],
+		"t": ["chop_down_trees"],
+		"p": ["gather_plants"],
+		"s": ["smooth_stone"],
+		"e": ["engrave_stone"],
+		"a": ["carve_fortifications"],
+		"v": ["toggle_engravings"],
+		"x": ["remove_designation"],
+		"n": ["remove_construction"],
+		"bc": ["reclaim_items/buildings"],
+		"bf": ["forbid_items/buildings"],
+		"bm": ["melt_items"],
+		"bM": ["remove_melt"],
+		"bd": ["dump_items"],
+		"bD": ["remove_dump"],
+		"bh": ["hide_items/buildings"],
+		"bH": ["unhide_items/buildings"],
+		"oh": ["high_traffic_area"],
+		"on": ["normal_traffic_area"],
+		"ol": ["low_traffic_area"],
+		"or": ["restricted_traffic_area"]
+		},
+	"build" : {
+		"Cw" : ["construct_wall"]
+		},
+	"place" : {
+		"f" : ["food_stockpile"]
+		},
+	"query" : {}
 }

@@ -1,6 +1,8 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, MultiParamTypeClasses,
 DeriveDataTypeable, OverloadedStrings, StandaloneDeriving #-}
 
+module Main where
+
 import qualified Data.Map.Strict as M
 import Control.Applicative((<$>),(<*>), empty)
 import Numeric
@@ -53,14 +55,19 @@ main = getArgs >>= executeR Main {} >>= \opts ->
         configStr <- L.readFile "pngconfig.json"
         startPos <- return (toTup $ start opts)
         outStr <- return $ genOutfileName (input opts) (output opts)
+        putStrLn "files loaded"
         dict <- return (constructDict aliasStr configStr)
+        putStrLn "dictionary built"
+        putStrLn $ show $ isNothing dict
         imgFileStrs <- mapM B.readFile $ words $ input opts
         imgStrs <- return $ rights $ map decodePng imgFileStrs
+        putStrLn $ show (length imgStrs)  
         (errs,imgs) <- return $ partitionEithers
             $ convertpngs startPos imgStrs (phases opts) (fromJust dict)
-        if (not . null) errs
-        then putStrLn $ concat errs
-        else mapM_ (writeFile' outStr) imgs
+        mapM_ putStrLn errs
+        if null errs
+        then mapM_ (writeFile' outStr) imgs
+        else putStrLn $ concat errs
   where genOutfileName i "" = head (words i) ++ "-"
         genOutfileName _ s  = s ++ "-"
         toTup ls | null ls = Nothing
@@ -169,10 +176,10 @@ translate dict Place key = M.lookup key (plc dict)
 translate dict Query key = M.lookup key (qry dict)
 
 
-data ConfigLists = ConfigLists { designate :: [(String,[String])]
-                               , build     :: [(String,[String])]
-                               , place     :: [(String,[String])]
-                               , query     :: [(String,[String])] }
+data ConfigLists = ConfigLists { designate :: M.Map String [String]
+                               , build     :: M.Map String [String]
+                               , place     :: M.Map String [String]
+                               , query     :: M.Map String [String] }
 
 instance FromJSON ConfigLists where
     parseJSON (Object v) = ConfigLists <$>
@@ -190,20 +197,18 @@ constructDict :: L.ByteString -> L.ByteString -> Maybe CommandDictionary
 constructDict alias config = do
     aliasLists <- decode alias :: Maybe ConfigLists
     commands <- decode config :: Maybe ConfigLists
-    buildCommandDict (Just aliasLists) (Just commands)
+    buildCommandDict (aliasLists) (commands)
   where 
-    buildCommandDict :: Maybe ConfigLists -> Maybe ConfigLists -> Maybe CommandDictionary
-    buildCommandDict Nothing _ = Nothing
-    buildCommandDict _ Nothing = Nothing
-    buildCommandDict (Just al) (Just cs) =
-        buildCommandDict' ( expandList (designate al)
-                          , expandList (build al)
-                          , expandList (place al)
-                          , expandList (query al) )
-                          ( expandPixelList (designate cs)
-                          , expandPixelList (build cs)
-                          , expandPixelList (place cs)
-                          , expandPixelList (query cs) )
+    buildCommandDict :: ConfigLists -> ConfigLists -> Maybe CommandDictionary
+    buildCommandDict al cs =
+        buildCommandDict' ( expandList $ M.toList (designate al)
+                          , expandList $ M.toList (build al)
+                          , expandList $ M.toList (place al)
+                          , expandList $ M.toList (query al) )
+                          ( expandPixelList $ M.toList (designate cs)
+                          , expandPixelList $ M.toList (build cs)
+                          , expandPixelList $ M.toList (place cs)
+                          , expandPixelList $ M.toList (query cs) )
 
     buildCommandDict' (a,b,c,d) (w,x,y,z) = do 
        designate' <- genMap a w
@@ -213,13 +218,15 @@ constructDict alias config = do
        Just (CommandDictionary designate' build' place' query')
 
     genMap :: [(String,String)] -> [(PixelRGBA8,String)] -> Maybe (M.Map PixelRGBA8 String)
-    genMap al cs | length (takeWhile pred genList) == 0  = Just (M.fromList $ map noMaybe genList) 
+    genMap _ [] = Just M.empty
+    genMap [] _ = Just M.empty
+    genMap al cs | length (filter pred genList) == 0  = Just (M.fromList $ map noMaybe genList) 
                  | otherwise = Nothing
       where genList = map doLookup cs
             doLookup (pix,str) = (pix,M.lookup str dict)
             dict = M.fromList al
 
-            pred (_,a) = isJust a
+            pred (_,a) = isNothing a
 
             noMaybe (a,b) = (a,fromJust b)
 
@@ -227,7 +234,7 @@ constructDict alias config = do
     expandList = concatMap (expand . swap)
 
     expandPixelList :: [(String,[String])] -> [(PixelRGBA8,String)]
-    expandPixelList = concatMap (toPixel . expand . swap)
+    expandPixelList = map (toPixel) . expandList
     
     -- expand a tuple holding a list of keys and a value into a list of key value pairs    
     expand :: ([String],String) -> [(String,String)]

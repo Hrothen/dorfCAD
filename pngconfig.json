@@ -1,0 +1,12 @@
+{
+	"designate": {
+		"mine":["0:0:0:0"]
+		},
+	"build" : {
+		"construct_wall":["0x00000000"]	//same as 0:0:0:0
+		},
+	"place" : {
+		"food_stockpile":["0:0:255:0"]
+		},
+	"query" : {}
+}
