@@ -134,7 +134,7 @@ pngconvert pos imgs phase dict | null errs == False = Left (intercalate "\n" err
 -- concat a list of ImageStrings into a single csv Blueprint
 toCSV :: Position -> Int -> Phase -> [ImageString] -> Blueprint
 toCSV s w p imgs = L.pack $ header s w p ++ intercalate uplevel imgs
-  where uplevel = "#>" ++ replicate (w-1) ','
+  where uplevel = "\n#>" ++ replicate w ','
 
 -- convert a RGBA8 image to a list of lists of strings
 imageToList :: (PixelRGBA8 -> String) -> DynamicImage -> Either String ImageString
