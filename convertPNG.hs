@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, MultiParamTypeClasses,
 DeriveDataTypeable, OverloadedStrings, StandaloneDeriving #-}
 
-module Main where
+module Main(main) where
 
 import Data.Either(partitionEithers,rights)
 import Data.Maybe(isNothing,fromJust)
