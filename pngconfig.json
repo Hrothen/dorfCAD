@@ -1,12 +1,12 @@
 {
-	"designate": {
-		"mine":["0:0:0:0"]
+	"designate" : {
+		"mine": ["0:0:0:255"]
 		},
 	"build" : {
-		"construct_wall":["0x00000000"]	//same as 0:0:0:0
+		"construct_wall": ["0x000000FF"]
 		},
 	"place" : {
-		"food_stockpile":["0:0:255:0"]
+		"food_stockpile": ["0:0:255:255"]
 		},
 	"query" : {}
 }

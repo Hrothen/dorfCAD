@@ -15,8 +15,14 @@ import qualified Data.ByteString as B
 import System.Environment(getArgs)
 import System.Console.CmdLib
 import Control.Monad
+import Control.Exception
 
 import Config(CommandDictionary(..),constructDict)
+
+data ImageFormatException = ImageNotRGBA8
+    deriving (Show, Typeable)
+
+instance Exception ImageFormatException
 
 
 data Main = Main { start :: [Int], input :: String,
@@ -56,12 +62,17 @@ main = getArgs >>= executeR Main {} >>= \opts ->
         dict <- return (constructDict aliasStr configStr)
         putStrLn "dictionary built"
         putStrLn $ show $ isNothing dict
-        imgFileStrs <- mapM B.readFile $ words $ input opts
-        imgStrs <- return $ rights $ map decodePng imgFileStrs
-        putStrLn $ show (length imgStrs)  
-        (errs,imgs) <- return $ partitionEithers
-            $ convertpngs startPos imgStrs (phases opts) (fromJust dict)
-        mapM_ putStrLn errs
+        putStrLn $ show (phases opts)
+        putStrLn (input opts)
+        imgFileStrs <- mapM B.readFile $ phrases $ input opts
+        (errstrs,imgStrs) <- return $ partitionEithers $ map decodePng imgFileStrs
+        putStrLn $ show (length imgStrs)
+        putStrLn $ concat errstrs
+        (errs,imgs) <- catch (return $ partitionEithers
+            $ convertpngs startPos imgStrs (phases opts) (fromJust dict))
+            (\e-> do let errstr = show (e :: SomeException)
+                     putStrLn ("error parsing file:" ++ errstr)
+                     return ([],[]))
         if null errs
         then mapM_ (writeFile' outStr) imgs
         else putStrLn $ concat errs
@@ -82,15 +93,17 @@ type LBstr = L.ByteString
 type Blueprint = L.ByteString
 type Position = Maybe (Int,Int)
 
-emptyCell = ""
+-- string to put in empty cells, quickfort accepts an empty string or "#" here
+emptyCell = "#"
 
 -- This header goes at the top of each Blueprint and tells
 -- quickfort where to start and in what mode to run
 header :: Position -> Int -> Phase -> String
 header pos w p = '#':mode ++ start ++ empties
-  where empties = replicate (w-1) ','
+  where empties = replicate (w) ','
         start | pos == Nothing = ""
               | otherwise = "start" ++ show (fromJust pos)
+
         mode  | p == Dig = "dig"
               | p == Build = "build"
               | p == Place = "place"
@@ -99,16 +112,16 @@ header pos w p = '#':mode ++ start ++ empties
 
 convertpngs :: Position -> [DynamicImage] -> String -> CommandDictionary -> [Either String Blueprint]
 convertpngs pos imgs phases dict | null err = convertImage
-                                 | otherwise = map Left (intersperse "\n" err)
+                                 | otherwise = map Left err
   where convertImage = map (\phase -> pngconvert pos imgs phase dict) p
         (err,images) = partitionEithers convertImage
         p = parsePhases phases
 
 -- convert a list of images into a blueprint
 pngconvert :: Position -> [DynamicImage] -> Phase -> CommandDictionary -> Either String Blueprint
-pngconvert pos imgs phase dict | null errs = Left (intercalate "\n" errs)
-                               | any (w/=) width || any (h/=) height = Left
-                                "Error: not all images have the same dimensions"
+pngconvert pos imgs phase dict | null errs == False = Left (intercalate "\n" errs)
+                               -- | any (w/=) width || any (h/=) height = Left
+                               -- "Error: not all images have the same dimensions"
                                | otherwise = Right $ toCSV pos w phase images
   where (errs,images) = partitionEithers csvList
         w = head width
@@ -124,17 +137,16 @@ toCSV s w p imgs = L.pack $ header s w p ++ intercalate uplevel imgs
   where uplevel = "#>" ++ replicate (w-1) ','
 
 -- convert a RGBA8 image to a list of lists of strings
-imageToList :: (PixelRGBA8 -> Maybe String) -> DynamicImage -> Either String ImageString
+imageToList :: (PixelRGBA8 -> String) -> DynamicImage -> Either String ImageString
 imageToList dict (ImageRGBA8 img) = Right $ convertVector (imageData img)
-  where convertVector = csvify (width) . (map ((',':) . replaceNothings . dict)) . (toPixelList . V.toList)
+  where convertVector = csvify (width) . (map ((++ ",") . dict)) . (toPixelList . V.toList)
         width = imageWidth img
-        replaceNothings = maybe emptyCell id -- replace a result of Nothing with an empty cell
 
         -- convert list of Word8 values into a list of RGBA8 Pixels
         toPixelList [] = []
         toPixelList (a:b:c:d:pixels) = (PixelRGBA8 a b c d) : toPixelList pixels
 --catch non RGBA8 images and give an error message
-imageToList _ _ = Left "Unsupported png format, use RGBA8 encoding"
+imageToList _ _ = throw ImageNotRGBA8
 
 
 -- take a list of comma delimited strings and return a string with newlines added
@@ -149,7 +161,19 @@ csvify i ls = '\n' : (concat row) ++ csvify i rest
 parsePhases :: String -> [Phase]
 parsePhases ""    = []
 parsePhases "All" = [Dig,Build,Place,Query]
-parsePhases s     = map read (words s)
+parsePhases s     = map read (phrases s)
+
+-- same as words, but cuts on commas instead of spaces
+phrases :: String -> [String]
+phrases s = case dropWhile {-partain:Char.-}isComma s of
+                 "" -> []
+                 s' -> w : phrases s''
+                       where (w,s'') =
+                              break {-partain:Char.-} isComma s'
+
+isComma :: Char -> Bool
+isComma ',' = True
+isComma _   = False
 
 data Phase = Dig
            | Build
@@ -158,8 +182,8 @@ data Phase = Dig
     deriving (Typeable, Data, Eq, Read, Show)
 
 
-translate :: CommandDictionary -> Phase -> PixelRGBA8 -> Maybe String
-translate dict Dig   key = M.lookup key (des dict)
-translate dict Build key = M.lookup key (bld dict)
-translate dict Place key = M.lookup key (plc dict)
-translate dict Query key = M.lookup key (qry dict)
+translate :: CommandDictionary -> Phase -> PixelRGBA8 -> String
+translate dict Dig   key = M.findWithDefault emptyCell key (des dict)
+translate dict Build key = M.findWithDefault emptyCell key (bld dict)
+translate dict Place key = M.findWithDefault emptyCell key (plc dict)
+translate dict Query key = M.findWithDefault emptyCell key (qry dict)
