@@ -3,6 +3,8 @@ DeriveDataTypeable, OverloadedStrings, StandaloneDeriving #-}
 
 module Main(main) where
 
+import Prelude hiding (repeat)
+
 import Data.Either(either)
 import Data.Maybe(isNothing,fromJust)
 import Codec.Picture.Png(decodePng)
@@ -17,7 +19,8 @@ import ConvertImage(Blueprint,Phase(..),convertpngs,phrases)
 
 
 data Main = Main { start :: [Int], input :: String,
-                   output :: String, phases :: String }
+                   output :: String, phases :: String,
+                   repeat :: Int }
     deriving (Typeable, Data, Eq)
 
 instance Attributes Main where
@@ -37,7 +40,11 @@ instance Attributes Main where
         phases         %> [ Help "Phase to create a blueprint for.",
                             ArgHelp "[All|Dig|Build|Place|Query] OR <phase>,<phase>,...",
                             Long ["phase"],
-                            Short ['p'] ]
+                            Short ['p'] ],
+        repeat         %> [ Help "Optional, specifies a number of times to repeat the blueprint",
+                            ArgHelp "Int",
+                            Long ["repeat"],
+                            Default (1::Int) ]
         ]
 
 instance RecordCommand Main where
@@ -66,10 +73,11 @@ go :: L.ByteString -> L.ByteString -> [B.ByteString] -> Main -> Either String [B
 go alias config imgFiles opts = do
     dict     <- constructDict alias config
     imgStrs  <- mapM decodePng imgFiles
-    sequence $ convertpngs startPos imgStrs phaseList dict
+    sequence $ convertpngs reps startPos imgStrs phaseList dict
   where
     startPos  = toTup (start opts)
     phaseList = phases opts
+    reps      = repeat opts
     toTup ls  | null ls = Nothing
               | length ls /= 2 = Nothing
               | otherwise = Just (head ls,last ls)

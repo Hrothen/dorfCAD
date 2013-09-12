@@ -45,19 +45,19 @@ header pos w p = '#':mode ++ start ++ empties
               | otherwise = "query"
 
 
-convertpngs :: Position -> [DynamicImage] -> String -> CommandDictionary -> [Either String Blueprint]
-convertpngs pos imgs phases dict | null err = convertImage
-                                 | otherwise = map Left err
-  where convertImage = map (\phase -> pngconvert pos imgs phase dict) p
+convertpngs :: Int -> Position -> [DynamicImage] -> String -> CommandDictionary -> [Either String Blueprint]
+convertpngs r pos imgs phases dict | null err = convertImage
+                                   | otherwise = map Left err
+  where convertImage = map (\phase -> pngconvert r pos imgs phase dict) p
         (err,images) = partitionEithers convertImage
         p = parsePhases phases
 
 -- convert a list of images into a blueprint
-pngconvert :: Position -> [DynamicImage] -> Phase -> CommandDictionary -> Either String Blueprint
-pngconvert pos imgs phase dict | null errs == False = Left (intercalate "\n" errs)
+pngconvert :: Int -> Position -> [DynamicImage] -> Phase -> CommandDictionary -> Either String Blueprint
+pngconvert r pos imgs phase dict | null errs == False = Left (intercalate "\n" errs)
                                | any (w/=) width || any (h/=) height = Left
                                "Error: not all images have the same dimensions"
-                               | otherwise = Right $ toCSV pos w phase images
+                               | otherwise = Right $ toCSV r pos w phase images
   where (errs,images) = partitionEithers csvList
         w = head width
         h = head height
@@ -67,9 +67,10 @@ pngconvert pos imgs phase dict | null errs == False = Left (intercalate "\n" err
 
 
 -- concat a list of ImageStrings into a single csv Blueprint
-toCSV :: Position -> Int -> Phase -> [ImageString] -> Blueprint
-toCSV s w p imgs = L.pack $ header s w p ++ intercalate uplevel imgs
+toCSV :: Int -> Position -> Int -> Phase -> [ImageString] -> Blueprint
+toCSV r s w p imgs = L.pack $ header s w p ++ intercalate uplevel repeatedImgs
   where uplevel = "\n#>" ++ replicate w ','
+        repeatedImgs = take (r * (length imgs)) (cycle imgs)
 
 -- convert a RGBA8 image to a list of lists of strings
 imageToList :: (PixelRGBA8 -> String) -> DynamicImage -> Either String ImageString
