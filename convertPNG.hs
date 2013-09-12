@@ -49,17 +49,11 @@ main = getArgs >>= executeR Main {} >>= \opts ->
         aliasStr          <- L.readFile "alias.json"
         configStr         <- L.readFile "pngconfig.json"
         imgFileStrs       <- mapM B.readFile $ phrases (input opts)
-        -- startPos          <- return (toTup $ start opts)
         outStr            <- return $ genOutfileName (input opts) (output opts)
-        -- (dictErrors,dict) <- return $ partitionEithers (constructDict aliasStr configStr)
-        -- (errstrs,imgStrs) <- return $ partitionEithers $ map decodePng imgFileStrs
-        -- (errs,imgs)       <- return $ partitionEithers $ convertpngs startPos imgStrs (phases opts) dict)
         blueprints        <- return $ go aliasStr configStr imgFileStrs opts
         either (putStrLn) (mapM_ (writeFile' outStr)) blueprints
-        -- if null errs
-        -- then mapM_ (writeFile' outStr) imgs
-        -- else putStrLn $ concat errs
-  where genOutfileName i "" = head (words i) ++ "-"
+  where 
+        genOutfileName i "" = head (words i) ++ "-"
         genOutfileName _ s  = s ++ "-"
         
         -- writeFile' :: String -> Blueprint -> IO ()
@@ -70,13 +64,13 @@ main = getArgs >>= executeR Main {} >>= \opts ->
 
 go :: L.ByteString -> L.ByteString -> [B.ByteString] -> Main -> Either String [Blueprint]
 go alias config imgFiles opts = do
-    dict    <- constructDict alias config
-    imgStrs <- mapM decodePng imgFiles
+    dict     <- constructDict alias config
+    imgStrs  <- mapM decodePng imgFiles
     sequence $ convertpngs startPos imgStrs phaseList dict
   where
-    startPos = toTup (start opts)
+    startPos  = toTup (start opts)
     phaseList = phases opts
-    toTup ls | null ls = Nothing
-             | length ls /= 2 = Nothing
-             | otherwise = Just (head ls,last ls)
+    toTup ls  | null ls = Nothing
+              | length ls /= 2 = Nothing
+              | otherwise = Just (head ls,last ls)
 
