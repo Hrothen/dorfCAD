@@ -11,7 +11,6 @@ import qualified Data.ByteString as B
 import System.Environment(getArgs)
 import System.Console.CmdLib
 import Control.Monad
-import Control.Exception
 
 import Config(CommandDictionary(..),constructDict)
 import ConvertImage(Blueprint,Phase(..),convertpngs,phrases)
@@ -56,7 +55,7 @@ main = getArgs >>= executeR Main {} >>= \opts ->
         genOutfileName i "" = head (words i) ++ "-"
         genOutfileName _ s  = s ++ "-"
         
-        -- writeFile' :: String -> Blueprint -> IO ()
+        writeFile' :: String -> Blueprint -> IO ()
         writeFile' outStr img = let name = outStr ++
                                            (L.unpack $ L.takeWhile (','/=) (L.tail img)) ++
                                            ".csv"

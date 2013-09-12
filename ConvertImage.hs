@@ -5,13 +5,11 @@ module ConvertImage(
     , Blueprint
     , Position
     , Phase(..)
-    , ImageFormatException(..)
     , header
     , phrases
     , convertpngs
     ) where
 
-import Control.Exception
 import Data.Typeable(Typeable)
 import Data.Data(Data)
 import Codec.Picture.Types
@@ -29,11 +27,6 @@ import Config
 type ImageString = String
 type Blueprint = L.ByteString
 type Position = Maybe (Int,Int)
-
-data ImageFormatException = ImageNotRGBA8
-    deriving (Show, Typeable)
-
-instance Exception ImageFormatException
 
 -- string to put in empty cells, quickfort accepts an empty string or "#" here
 emptyCell = "#"
@@ -88,7 +81,8 @@ imageToList dict (ImageRGBA8 img) = Right $ convertVector (imageData img)
         toPixelList [] = []
         toPixelList (a:b:c:d:pixels) = (PixelRGBA8 a b c d) : toPixelList pixels
 --catch non RGBA8 images and give an error message
-imageToList _ _ = throw ImageNotRGBA8
+imageToList _ _ = Left "Error: one or more images are not encoded in RGBA8 color, \
+                       \did you remember to add an alpha channel?"
 
 
 -- take a list of comma delimited strings and return a string with newlines added

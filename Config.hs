@@ -16,7 +16,6 @@ import Numeric(readHex)
 import Control.Monad(mzero,liftM,mapM)
 import Data.Aeson
 import Codec.Picture.Types
--- import Control.Exception
 import Text.Regex.Posix((=~))
 
 -- the CommandDictionary describes a mapping from pixels to strings
