@@ -48,7 +48,7 @@ deriving instance Ord PixelRGBA8
 constructDict :: L.ByteString -> L.ByteString -> Maybe CommandDictionary
 constructDict alias config = do
     aliasLists <- decode alias :: Maybe ConfigLists
-    commands <- decode config :: Maybe ConfigLists
+    commands   <- decode config :: Maybe ConfigLists
     buildCommandDict (aliasLists) (commands)
   where 
     buildCommandDict :: ConfigLists -> ConfigLists -> Maybe CommandDictionary
@@ -70,8 +70,8 @@ constructDict alias config = do
        Just (CommandDictionary designate' build' place' query')
 
 genMap :: [(String,String)] -> [(PixelRGBA8,String)] -> Maybe (M.Map PixelRGBA8 String)
-genMap _ [] = Just M.empty
-genMap [] _ = Just M.empty
+genMap _ []  = Just M.empty
+genMap [] _  = Just M.empty
 genMap al cs | length (filter pred genList) == 0  = Just (M.fromList $ map noMaybe genList) 
              | otherwise = Nothing
   where genList = map doLookup cs
@@ -100,21 +100,15 @@ toPixel (key,val) = (keyToPixel key,val)
 -- color representations:
 -- base ten: <val>:<val>:<val>:<val>
 -- hex: #<val><val><val><val> or 0x<val><val><val><val>
--- keyToPixel :: String -> PixelRGBA8
--- keyToPixel = listToPixel . keyToPixel'
---  where keyToPixel' key | head key == '#' = parseHex $ tail key
---                        | take 2 key == "0x" = parseHex $ drop 2 key
---                        | otherwise = parse10 key
-
 keyToPixel :: String -> PixelRGBA8
 keyToPixel = listToPixel . keyToPixel'
-  where keyToPixel' key | key == "" = throw (NoMethodError "absent key")
-                        | fst hexResults /= "" = parseHex (snd hexResults)
+  where keyToPixel' key | key               == "" = throw (NoMethodError "absent key")
+                        | fst hexResults    /= "" = parseHex (snd hexResults)
                         | fst base10Results /= "" = parse10 (snd base10Results)
-                        | otherwise = throw (NoMethodError ("malformed key: " ++ key))
-          where matchHex     = key =~ hexPattern :: (String,String,String,[String])
-                matchBaseTen = key =~ baseTenPattern :: (String,String,String,[String])
-                hexResults = results matchHex
+                        | otherwise               = throw (NoMethodError ("malformed key: " ++ key))
+          where matchHex      = key =~ hexPattern :: (String,String,String,[String])
+                matchBaseTen  = key =~ baseTenPattern :: (String,String,String,[String])
+                hexResults    = results matchHex
                 base10Results = results matchBaseTen
                 results (_,match,_,substrs) = (match,substrs) 
 
