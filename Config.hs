@@ -7,15 +7,16 @@ module Config (
 import qualified Data.Map.Strict as M
 import Control.Applicative((<$>),(<*>))
 import qualified Data.ByteString.Lazy as L
+import Data.List(unlines)
 import Data.Maybe
-import Data.Either(either)
+import Data.Either(partitionEithers)
 import Data.Tuple
 import Data.Word(Word8(..))
 import Numeric(readHex)
-import Control.Monad(mzero)
+import Control.Monad(mzero,liftM,mapM)
 import Data.Aeson
 import Codec.Picture.Types
-import Control.Exception
+-- import Control.Exception
 import Text.Regex.Posix((=~))
 
 -- the CommandDictionary describes a mapping from pixels to strings
@@ -33,6 +34,13 @@ data ConfigLists = ConfigLists { designate :: M.Map String [String]
                                , place     :: M.Map String [String]
                                , query     :: M.Map String [String] }
 
+configTup :: ConfigLists -> (M.Map String [String],M.Map String [String],
+                             M.Map String [String],M.Map String [String])
+configTup cl = (designate cl,
+                build cl,
+                place cl,
+                query cl)
+
 instance FromJSON ConfigLists where
     parseJSON (Object v) = ConfigLists <$>
                           v .: "designate" <*>
@@ -45,47 +53,57 @@ instance FromJSON ConfigLists where
 deriving instance Ord PixelRGBA8
 
 
-constructDict :: L.ByteString -> L.ByteString -> Maybe CommandDictionary
+constructDict :: L.ByteString -> L.ByteString -> Either String CommandDictionary
 constructDict alias config = do
-    aliasLists <- decode alias :: Maybe ConfigLists
-    commands   <- decode config :: Maybe ConfigLists
-    buildCommandDict (aliasLists) (commands)
+    aliasLists <- eitherDecode alias :: Either String ConfigLists
+    commands   <- eitherDecode config :: Either String ConfigLists
+    buildCommandDict aliasLists commands
   where 
-    buildCommandDict :: ConfigLists -> ConfigLists -> Maybe CommandDictionary
+    buildCommandDict :: ConfigLists -> ConfigLists -> Either String CommandDictionary
     buildCommandDict al cs =
-        buildCommandDict' ( expandList $ M.toList (designate al)
-                          , expandList $ M.toList (build al)
-                          , expandList $ M.toList (place al)
-                          , expandList $ M.toList (query al) )
-                          ( expandPixelList $ M.toList (designate cs)
-                          , expandPixelList $ M.toList (build cs)
-                          , expandPixelList $ M.toList (place cs)
-                          , expandPixelList $ M.toList (query cs) )
-
+        buildCommandDict' (tmap4 (expandList . M.toList) altup)
+                          (tmap4 (expandPixelList . M.toList) cstup)
+            where altup = configTup al
+                  cstup = configTup cs
     buildCommandDict' (a,b,c,d) (w,x,y,z) = do 
        designate' <- genMap a w
        build'     <- genMap b x
        place'     <- genMap c y
        query'     <- genMap d z
-       Just (CommandDictionary designate' build' place' query')
+       Right (CommandDictionary designate' build' place' query')
 
-genMap :: [(String,String)] -> [(PixelRGBA8,String)] -> Maybe (M.Map PixelRGBA8 String)
-genMap _ []  = Just M.empty
-genMap [] _  = Just M.empty
-genMap al cs | length (filter pred genList) == 0  = Just (M.fromList $ map noMaybe genList) 
-             | otherwise = Nothing
-  where genList = map doLookup cs
-        doLookup (pix,str) = (pix,M.lookup str dict)
-        dict = M.fromList al
 
-        pred (_,a) = isNothing a
+-- map a function over a 4 tuple
+tmap4 :: (a -> b) -> (a,a,a,a) -> (b,b,b,b)
+tmap4 f (t1,t2,t3,t4) = (f t1,f t2,f t3,f t4)
 
-        noMaybe (a,b) = (a,fromJust b)
+
+genMap :: [(String,String)] -> [(Either String PixelRGBA8,String)]
+                            -> Either String (M.Map PixelRGBA8 String)
+genMap _ []  = Right M.empty
+genMap [] _  = Right M.empty
+genMap al cs | not (null errorList) = Left (unlines errorList)
+             | length (filter pred genList) == 0  = Right (M.fromList $ map noMaybe genList) 
+             | otherwise =
+                Left "Error generating pixel-string map: an alias is referenced\
+                      \ in pngconfig.json that is not present in alias.json"
+  where 
+    (errorList,genList) = partitionEithers $ map (checkEither . doLookup) cs
+    doLookup (pix,str) = (pix,M.lookup str dict)
+    -- checkEither extracts the Either state from a tuple
+    checkEither (Right p,s) = Right (p,s)
+    checkEither (Left e,s) = Left e
+    dict = M.fromList al
+
+    pred (_,a) = isNothing a
+
+    noMaybe (a,b) = (a,fromJust b)
+
 
 expandList :: [(String,[String])] -> [(String,String)]
 expandList = concatMap (expand . swap)
 
-expandPixelList :: [(String,[String])] -> [(PixelRGBA8,String)]
+expandPixelList :: [(String,[String])] -> [(Either String PixelRGBA8,String)]
 expandPixelList = map (toPixel) . expandList
     
 -- expand a tuple holding a list of keys and a value into a list of key value pairs    
@@ -94,23 +112,24 @@ expand ([],_) = []
 expand ((k:ks),val) = (k,val) : expand (ks,val)
 
 -- TODO: need to make these check for malformed strings
-toPixel :: (String,String) ->(PixelRGBA8,String)
+toPixel :: (String,String) ->(Either String PixelRGBA8,String)
 toPixel (key,val) = (keyToPixel key,val)
 
 -- color representations:
 -- base ten: <val>:<val>:<val>:<val>
 -- hex: #<val><val><val><val> or 0x<val><val><val><val>
-keyToPixel :: String -> PixelRGBA8
-keyToPixel = listToPixel . keyToPixel'
-  where keyToPixel' key | key               == "" = throw (NoMethodError "absent key")
-                        | fst hexResults    /= "" = parseHex (snd hexResults)
+keyToPixel :: String -> Either String PixelRGBA8
+keyToPixel = (liftM listToPixel) . keyToPixel'
+  where keyToPixel' key | key               == "" = Left (fErr "attempted to pass null key string")
+                        | fst hexResults    /= "" = Right $ parseHex (snd hexResults)
                         | fst base10Results /= "" = parse10 (snd base10Results)
-                        | otherwise               = throw (NoMethodError ("malformed key: " ++ key))
+                        | otherwise               = Left (fErr $ "malformed key: " ++ key)
           where matchHex      = key =~ hexPattern :: (String,String,String,[String])
                 matchBaseTen  = key =~ baseTenPattern :: (String,String,String,[String])
                 hexResults    = results matchHex
                 base10Results = results matchBaseTen
-                results (_,match,_,substrs) = (match,substrs) 
+                results (_,match,_,substrs) = (match,substrs)
+                fErr s = "Error in keyToPixel: " ++ s
 
 
 
@@ -121,18 +140,19 @@ parseHex :: [String] -> [Word8]
 parseHex = (map toHex) . tail 
   where toHex = fst . head . readHex
 
-parse10 :: [String] -> [Word8]
-parse10  = map (readWithBounds)
+parse10 :: [String] -> Either String [Word8]
+parse10  = mapM (readWithBounds)
     -- readWithBounds will either return the String as a Word8 or
     -- throw an error if the value is larger than 255
-    where readWithBounds :: String -> Word8
-          readWithBounds s | val > 255 = throw (NoMethodError ("key value too large: " ++ s))
-                           | otherwise = fromInteger val
+    where readWithBounds :: String -> Either String Word8
+          readWithBounds s | val > 255 = Left ("key value too large: " ++ s)
+                           | otherwise = Right (fromInteger val)
             where val = read s :: Integer
 
---listToPixel :: [Word8] -> PixelRGBA8
+-- listToPixel can't fail on an input of Right, the pattern matching in keyToPixel'
+-- guarentees that parseHex and parse10 will return a list of the correct size
+listToPixel :: [Word8] -> PixelRGBA8
 listToPixel (r:g:b:a:[]) = PixelRGBA8 r g b a
-listToPixel e = throw (PatternMatchFail ("Malformed listToPixel, actually passed " ++ (show e)))
 
 hexPattern :: String
 hexPattern = "^(0x|#)([[:xdigit:]]{2,2})([[:xdigit:]]{2,2})([[:xdigit:]]{2,2})([[:xdigit:]]{2,2})"
