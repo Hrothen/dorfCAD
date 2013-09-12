@@ -57,9 +57,10 @@ main = getArgs >>= executeR Main {} >>= \opts ->
         
         writeFile' :: String -> Blueprint -> IO ()
         writeFile' outStr img = let name = outStr ++
-                                           (L.unpack $ L.takeWhile (','/=) (L.tail img)) ++
+                                           (L.unpack $ L.takeWhile (notDelimiter) (L.tail img)) ++
                                            ".csv"
                                 in do L.writeFile name img
+        notDelimiter c = (c /= ',') && (c /= ' ')
 
 go :: L.ByteString -> L.ByteString -> [B.ByteString] -> Main -> Either String [Blueprint]
 go alias config imgFiles opts = do

@@ -37,7 +37,7 @@ header :: Position -> Int -> Phase -> String
 header pos w p = '#':mode ++ start ++ empties
   where empties = replicate (w) ','
         start | pos == Nothing = ""
-              | otherwise = "start" ++ show (fromJust pos)
+              | otherwise = " start" ++ show (fromJust pos)
 
         mode  | p == Dig = "dig"
               | p == Build = "build"
