@@ -34,15 +34,12 @@ emptyCell = "#"
 -- This header goes at the top of each Blueprint and tells
 -- quickfort where to start and in what mode to run
 header :: Position -> Int -> Phase -> String
-header pos w p = '#':mode ++ start ++ empties
-  where empties = replicate (w) ','
-        start | pos == Nothing = ""
-              | otherwise = " start" ++ show (fromJust pos)
-
-        mode  | p == Dig = "dig"
-              | p == Build = "build"
-              | p == Place = "place"
-              | otherwise = "query"
+header pos w p = '#':mode p ++ start ++ replicate w ','
+  where start = maybe "" (\x-> " start" ++ show x) pos
+        mode Dig   = "dig"
+        mode Build = "build"
+        mode Place = "place"
+        mode _     = "query"
 
 
 convertpngs :: Int -> Position -> [DynamicImage] -> String -> CommandDictionary -> [Either String Blueprint]
