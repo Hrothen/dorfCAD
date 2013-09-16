@@ -144,7 +144,8 @@ parse10  = mapM (readWithBounds)
     -- readWithBounds will either return the String as a Word8 or
     -- throw an error if the value is larger than 255
     where readWithBounds :: String -> Either String Word8
-          readWithBounds s | val > 255 = Left ("key value too large: " ++ s)
+          readWithBounds s | val > 255 = Left ("key value too large: " ++ s ++
+                                               " needs to be less than 256")
                            | otherwise = Right (fromInteger val)
             where val = read s :: Integer
 
