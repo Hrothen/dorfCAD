@@ -28,8 +28,8 @@ type ImageString = String
 type Blueprint = L.ByteString
 type Position = Maybe (Int,Int)
 
--- string to put in empty cells, quickfort accepts an empty string or "#" here
-emptyCell = "#"
+-- string to put in empty cells, quickfort accepts an empty string, "~", or "`" here
+emptyCell = "~"
 
 -- This header goes at the top of each Blueprint and tells
 -- quickfort where to start and in what mode to run
