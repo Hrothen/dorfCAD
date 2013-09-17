@@ -1,4 +1,4 @@
-name:               mkblueprint
+name:               dorfCAD
 version:            1.0
 synopsis:           A small program that converts png images into quickfort blueprints
 cabal-version:      >= 1.10
