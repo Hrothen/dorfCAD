@@ -29,10 +29,16 @@
 		"or": ["restricted_traffic_area"]
 		},
 	"build" : {
-		"Cw" : ["construct_wall"]
+		"Cw" : ["construct_wall"],
+        "b" : ["place_bed"],
+        "h" : ["place_cabinet"],
+        "f" : ["place_chest"],
+        "d" : ["place_door"]
 		},
 	"place" : {
 		"f" : ["food_stockpile"]
 		},
-	"query" : {}
+	"query" : {
+        "r+" : ["room"]
+    }
 }
