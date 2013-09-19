@@ -16,6 +16,7 @@ import Codec.Picture.Types
 import Data.List(unzip,intercalate,intersperse)
 import Data.Maybe(isNothing,fromJust)
 import Data.Either(partitionEithers)
+import Data.Char(toLower,toUpper)
 
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.ByteString as B
@@ -93,9 +94,14 @@ csvify i ls = '\n' : (concat row) ++ csvify i rest
 
 
 parsePhases :: String -> [Phase]
-parsePhases ""    = []
-parsePhases "All" = [Dig,Build,Place,Query]
-parsePhases s     = map read (phrases s)
+parsePhases "" = [Dig,Build,Place,Query]
+parsePhases s  = parsePhases' (map toLower s)
+  where parsePhases' "all"  = [Dig,Build,Place,Query]
+        parsePhases' s      = map (read . firstToUpper) (phrases s)
+        firstToUpper (c:cs) = (toUpper c) : cs
+--parsePhases "All" = [Dig,Build,Place,Query]
+--parsePhases "all" = [Dig,Build,Place,Query]
+--parsePhases s     = map read (phrases s)
 
 -- same as words, but cuts on commas instead of spaces
 phrases :: String -> [String]
