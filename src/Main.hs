@@ -6,6 +6,7 @@ module Main(main) where
 import Prelude hiding (repeat)
 
 import Data.Either(either)
+import Data.List(isSuffixOf)
 import Data.Maybe(isNothing,fromJust)
 import Codec.Picture.Png(decodePng)
 import qualified Data.ByteString.Lazy.Char8 as L
@@ -59,8 +60,11 @@ main = getArgs >>= executeR Main {} >>= \opts ->
         blueprints        <- return $ go aliasStr configStr imgFileStrs opts
         either (putStrLn) (mapM_ (writeFile' outStr)) blueprints
   where 
-        genOutfileName i "" = head (words i) ++ "-"
+        genOutfileName i "" = (stripSuffix (head (words i))) ++ "-"
         genOutfileName _ s  = s ++ "-"
+
+        stripSuffix ls | ".png" `isSuffixOf` ls = take ((length ls) - 4) ls
+                       | otherwise = ls
         
         writeFile' :: String -> Blueprint -> IO ()
         writeFile' outStr img = let name = outStr ++
