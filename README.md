@@ -4,6 +4,8 @@ This program converts images into csv files for use with the program [Quickfort]
 
 ### Using dorfCAD
 
+All images must be saved with 8 bit rgb color.
+
 Invoke dorfCAD from the commandline with `mkblueprint -i FILE1,FILE2,..` where each FILE is an image. Passing multiple images will create a single blueprint with each image as a single layer going from bottom to top.
 
 dorfCAD relies on two files, `config.json` and `alias.json` to be present in the same directory. `config.json` provides a list of actions for each phase, and a list of colors to convert to that action (e.g. every black pixel becomes "dig"). Multiple colors can be assigned to the same action, but each color can only be assigned to one action per phase. Colors can be reused in each phase, so for example you can assign a color to dig on the dig phase, and then build a bed on the build phase, and then create a room on the query phase.
