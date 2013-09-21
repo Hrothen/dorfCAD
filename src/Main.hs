@@ -63,7 +63,8 @@ main = getArgs >>= executeR Main {} >>= \opts ->
         genOutfileName i "" = (stripSuffix (head (words i))) ++ "-"
         genOutfileName _ s  = s ++ "-"
 
-        stripSuffix ls | ".png" `isSuffixOf` ls = take ((length ls) - 4) ls
+        stripSuffix ls | any (`isSuffixOf` ls) [".png",".bmp",".gif"] = take ((length ls) - 4) ls
+                       | ".tiff" `isSuffixOf` ls = take ((length ls) - 5) ls 
                        | otherwise = ls
         
         writeFile' :: String -> Blueprint -> IO ()
