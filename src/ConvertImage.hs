@@ -70,18 +70,19 @@ toCSV r s w p imgs = L.pack $ header s w p ++ intercalate uplevel repeatedImgs
   where uplevel = "\n#>" ++ replicate w ','
         repeatedImgs = take (r * (length imgs)) (cycle imgs)
 
--- convert a RGBA8 image to a list of lists of strings
-imageToList :: (PixelRGBA8 -> String) -> DynamicImage -> Either String ImageString
-imageToList dict (ImageRGBA8 img) = Right $ convertVector (imageData img)
+-- convert a RGB8 image to a list of lists of strings
+imageToList :: (PixelRGB8 -> String) -> DynamicImage -> Either String ImageString
+imageToList dict (ImageRGB8 img) = Right $ convertVector (imageData img)
   where convertVector = csvify (width) . (map ((++ ",") . dict)) . (toPixelList . V.toList)
         width = imageWidth img
 
-        -- convert list of Word8 values into a list of RGBA8 Pixels
+        -- convert list of Word8 values into a list of RGB8 Pixels
         toPixelList [] = []
-        toPixelList (a:b:c:d:pixels) = (PixelRGBA8 a b c d) : toPixelList pixels
---catch non RGBA8 images and give an error message
-imageToList _ _ = Left "Error: one or more images are not encoded in RGBA8 color, \
-                       \did you remember to add an alpha channel?"
+        toPixelList (a:b:c:pixels) = (PixelRGB8 a b c) : toPixelList pixels
+-- catch RGBA8 images and drop the transparency layer
+imageToList dict (ImageRGBA8 img) = imageToList dict (ImageRGB8 (dropAlphaLayer img))
+-- catch non RGB8 images and give an error message
+imageToList _ _ = Left "Error: one or more images are not encoded in RGB8 color"
 
 
 -- take a list of comma delimited strings and return a string with newlines added
@@ -99,9 +100,7 @@ parsePhases s  = parsePhases' (map toLower s)
   where parsePhases' "all"  = [Dig,Build,Place,Query]
         parsePhases' s      = map (read . firstToUpper) (phrases s)
         firstToUpper (c:cs) = (toUpper c) : cs
---parsePhases "All" = [Dig,Build,Place,Query]
---parsePhases "all" = [Dig,Build,Place,Query]
---parsePhases s     = map read (phrases s)
+
 
 -- same as words, but cuts on commas instead of spaces
 phrases :: String -> [String]
@@ -122,7 +121,7 @@ data Phase = Dig
     deriving (Typeable, Data, Eq, Read, Show)
 
 
-translate :: CommandDictionary -> Phase -> PixelRGBA8 -> String
+translate :: CommandDictionary -> Phase -> PixelRGB8 -> String
 translate dict Dig   key = M.findWithDefault emptyCell key (des dict)
 translate dict Build key = M.findWithDefault emptyCell key (bld dict)
 translate dict Place key = M.findWithDefault emptyCell key (plc dict)

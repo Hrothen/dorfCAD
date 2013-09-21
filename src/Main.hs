@@ -8,7 +8,7 @@ import Prelude hiding (repeat)
 import Data.Either(either)
 import Data.List(isSuffixOf)
 import Data.Maybe(isNothing,fromJust)
-import Codec.Picture.Png(decodePng)
+import Codec.Picture(decodeImage)
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.ByteString as B
 import System.Environment(getArgs)
@@ -76,7 +76,7 @@ main = getArgs >>= executeR Main {} >>= \opts ->
 go :: L.ByteString -> L.ByteString -> [B.ByteString] -> Main -> Either String [Blueprint]
 go alias config imgFiles opts = do
     dict     <- constructDict alias config
-    imgStrs  <- mapM decodePng imgFiles
+    imgStrs  <- mapM decodeImage imgFiles
     sequence $ convertpngs reps startPos imgStrs phaseList dict
   where
     startPos  = toTup (start opts)

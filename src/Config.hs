@@ -21,10 +21,10 @@ import Text.Regex.Posix((=~))
 -- the CommandDictionary describes a mapping from pixels to strings
 -- it is accessed via the translate function
 data CommandDictionary = CommandDictionary {
-                         des :: M.Map PixelRGBA8 String
-                       , bld :: M.Map PixelRGBA8 String
-                       , plc :: M.Map PixelRGBA8 String
-                       , qry :: M.Map PixelRGBA8 String }
+                         des :: M.Map PixelRGB8 String
+                       , bld :: M.Map PixelRGB8 String
+                       , plc :: M.Map PixelRGB8 String
+                       , qry :: M.Map PixelRGB8 String }
     deriving(Eq,Show)
 
 
@@ -49,7 +49,7 @@ instance FromJSON ConfigLists where
     parseJSON _          = mzero
 
 
-deriving instance Ord PixelRGBA8
+deriving instance Ord PixelRGB8
 
 
 constructDict :: L.ByteString -> L.ByteString -> Either String CommandDictionary
@@ -77,8 +77,8 @@ tmap4 :: (a -> b) -> (a,a,a,a) -> (b,b,b,b)
 tmap4 f (t1,t2,t3,t4) = (f t1,f t2,f t3,f t4)
 
 
-genMap :: [(String,String)] -> [(Either String PixelRGBA8,String)]
-                            -> Either String (M.Map PixelRGBA8 String)
+genMap :: [(String,String)] -> [(Either String PixelRGB8,String)]
+                            -> Either String (M.Map PixelRGB8 String)
 genMap _ []  = Right M.empty
 genMap [] _  = Right M.empty
 genMap al cs | not (null errorList) = Left (unlines errorList)
@@ -102,7 +102,7 @@ genMap al cs | not (null errorList) = Left (unlines errorList)
 expandList :: [(String,[String])] -> [(String,String)]
 expandList = concatMap (expand . swap)
 
-expandPixelList :: [(String,[String])] -> [(Either String PixelRGBA8,String)]
+expandPixelList :: [(String,[String])] -> [(Either String PixelRGB8,String)]
 expandPixelList = map (toPixel) . expandList
     
 -- expand a tuple holding a list of keys and a value into a list of key value pairs    
@@ -111,13 +111,13 @@ expand ([],_) = []
 expand ((k:ks),val) = (k,val) : expand (ks,val)
 
 -- TODO: need to make these check for malformed strings
-toPixel :: (String,String) ->(Either String PixelRGBA8,String)
+toPixel :: (String,String) ->(Either String PixelRGB8,String)
 toPixel (key,val) = (keyToPixel key,val)
 
 -- color representations:
 -- base ten: <val>:<val>:<val>:<val>
 -- hex: #<val><val><val><val> or 0x<val><val><val><val>
-keyToPixel :: String -> Either String PixelRGBA8
+keyToPixel :: String -> Either String PixelRGB8
 keyToPixel = (liftM listToPixel) . keyToPixel'
   where keyToPixel' key | key               == "" = Left (fErr "attempted to pass null key string")
                         | fst hexResults    /= "" = Right $ parseHex (snd hexResults)
@@ -151,11 +151,11 @@ parse10  = mapM (readWithBounds)
 
 -- listToPixel can't fail on an input of Right, the pattern matching in keyToPixel'
 -- guarentees that parseHex and parse10 will return a list of the correct size
-listToPixel :: [Word8] -> PixelRGBA8
-listToPixel (r:g:b:a:[]) = PixelRGBA8 r g b a
+listToPixel :: [Word8] -> PixelRGB8
+listToPixel (r:g:b:[]) = PixelRGB8 r g b
 
 hexPattern :: String
-hexPattern = "^(0x|#)([[:xdigit:]]{2,2})([[:xdigit:]]{2,2})([[:xdigit:]]{2,2})([[:xdigit:]]{2,2})"
+hexPattern = "^(0x|#)([[:xdigit:]]{2,2})([[:xdigit:]]{2,2})([[:xdigit:]]{2,2})"
 
 baseTenPattern :: String
-baseTenPattern = "^([0-9]{1,3}):([0-9]{1,3}):([0-9]{1,3}):([0-9]{1,3})"
+baseTenPattern = "^([0-9]{1,3}):([0-9]{1,3}):([0-9]{1,3})"
