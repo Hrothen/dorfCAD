@@ -54,7 +54,7 @@ instance RecordCommand Main where
 main = getArgs >>= executeR Main {} >>= \opts ->
     do
         aliasStr          <- L.readFile "alias.json"
-        configStr         <- L.readFile "pngconfig.json"
+        configStr         <- L.readFile "config.json"
         imgFileStrs       <- mapM B.readFile $ phrases (input opts)
         outStr            <- return $ genOutfileName (input opts) (output opts)
         blueprints        <- return $ go aliasStr configStr imgFileStrs opts
