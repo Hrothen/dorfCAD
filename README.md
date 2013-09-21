@@ -4,6 +4,21 @@ This program converts images into csv files for use with the program [Quickfort]
 
 ### Using dorfCAD
 
-Invoke dorfCAD from the commandline with `mkblueprint -i <input files> -o <output file name with no extension -p <phases>` where possible phases are Dig, Build, Place, and Query, corresponding to the equivalent quickfort headers. If -p is left off blueprints will be produced for all phases.
+Invoke dorfCAD from the commandline with `mkblueprint -i FILE1,FILE2,..` where each FILE is an image. Passing multiple images will create a single blueprint with each image as a single layer going from bottom to top.
 
-dorfCAD relies on two configuration files, pngconfig,json and alias.json. Examples are included with the source code. alias.json defines aliases for regular quickfort commands, and pngconfig.json defines colors that correspond to each alias.
+dorfCAD relies on two files, `config.json` and `alias.json` to be present in the same directory. `config.json` provides a list of actions for each phase, and a list of colors to convert to that action (e.g. every black pixel becomes "dig"). Multiple colors can be assigned to the same action, but each color can only be assigned to one action per phase. Colors can be reused in each phase, so for example you can assign a color to dig on the dig phase, and then build a bed on the build phase, and then create a room on the query phase.
+`alias.json` is just a list of longer aliases to standard df commands, so you can set up `config.json` with commands like "build_bed" instead of "b".
+
+Small example config files are included in the src folder.
+
+#### Optional flags
+
+`-o` or `--output` provides a name for the output blueprints, `-o foo` will produce `foo-dig.csv, foo-build-csv` etc. If not set, will use the first input file name.
+
+`-s` or `--start` specifies a starting position for the blueprint. Usage is `-s x,y`.
+
+`-p` or `--phase` specifies the phases to produce blueprints for, `-p dig,build` will produce only `output-dig.csv` and `output-build.csv`. If not set, will produce for all phases. (Generating a blueprint for a phase you didn't provide any configuration data for won't mess anything up, it'll just be all '~')
+
+`-r` or `--repeat` specifies a number of times to repeat the input when creating a blueprint, useful for staircases. If not set, will default to 1.
+
+dorfCAD relies on two configuration files, config,json and alias.json. Examples are included with the source code. alias.json defines aliases for regular quickfort commands, and config.json defines colors that correspond to each alias.
