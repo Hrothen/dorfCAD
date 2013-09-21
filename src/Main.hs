@@ -19,7 +19,7 @@ import Config(CommandDictionary(..),constructDict)
 import ConvertImage(Blueprint,Phase(..),convertpngs,phrases)
 
 
-data Main = Main { start :: [Int], input :: String,
+data Main = Main { start :: [Int], input :: [String],
                    output :: String, phases :: String,
                    repeat :: Int }
     deriving (Typeable, Data, Eq)
@@ -27,13 +27,12 @@ data Main = Main { start :: [Int], input :: String,
 instance Attributes Main where
     attributes _ = group "Options" [
         start          %> [ Help "Start position of the macro.",
-                            ArgHelp "(X,Y)",
+                            ArgHelp "X,Y",
                             Short ['s'],
                             Long ["start"] ],
         input          %> [ Help "Images to be converted to blueprints.",
                             ArgHelp "FILENAME,FILENAME, ...",
-                            Required True,
-                            Short ['i'] ],
+                            Extra True ],
         output         %> [ Help "Name to use for blueprints, if not specified uses input name",
                             ArgHelp "TEXT",
                             Short ['o'],
@@ -44,6 +43,7 @@ instance Attributes Main where
                             Short ['p'] ],
         repeat         %> [ Help "Optional, specifies a number of times to repeat the blueprint",
                             ArgHelp "Int",
+                            Short ['r'],
                             Long ["repeat"],
                             Default (1::Int) ]
         ]
@@ -55,8 +55,9 @@ main = getArgs >>= executeR Main {} >>= \opts ->
     do
         aliasStr          <- L.readFile "alias.json"
         configStr         <- L.readFile "config.json"
-        imgFileStrs       <- mapM B.readFile $ phrases (input opts)
-        outStr            <- return $ genOutfileName (input opts) (output opts)
+        --don't bother to check if input files are valid, we want to fail if readFile fails
+        imgFileStrs       <- mapM B.readFile (input opts)
+        outStr            <- return $ genOutfileName ( head $ input opts) (output opts)
         blueprints        <- return $ go aliasStr configStr imgFileStrs opts
         either (putStrLn) (mapM_ (writeFile' outStr)) blueprints
   where 

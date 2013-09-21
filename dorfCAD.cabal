@@ -8,7 +8,7 @@ license-file:       LICENSE
 copyright:          (c) 2013 Leif Grele
 author:             Leif Grele
 stability:          probably ok
-data-files:         src/*.json
+data-files:         src/config.json, src/alias.json
 
 source-repository head
   type:             git
