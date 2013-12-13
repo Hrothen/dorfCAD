@@ -36,7 +36,8 @@ emptyCell = "~"
 -- quickfort where to start and in what mode to run
 header :: Position -> Int -> Phase -> String
 header pos w p = '#':mode p ++ start ++ replicate w ','
-  where start = maybe "" (\x-> " start" ++ show x) pos
+  where start = maybe "" (\x-> " start" ++ asQFpos x) pos
+        asQFpos (a,b) = '(':(show a) ++ ";" ++ (show b) ++ ")"
         mode Dig   = "dig"
         mode Build = "build"
         mode Place = "place"
