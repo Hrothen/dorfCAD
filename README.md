@@ -26,9 +26,9 @@ Small example config files are included in the src folder.
 `--config` specifies a config file to use for this run, by default the program will look for a file called
 `config.json` in the current directory.
 
-dorfCAD relies on two configuration files, config,json and alias.json. Examples are included with the source code. alias.json defines aliases for regular quickfort commands, and config.json defines colors that correspond to each alias.
+dorfCAD relies on two configuration files, config.json and alias.json. Examples are included with the source code. alias.json defines aliases for regular quickfort commands, and config.json defines colors that correspond to each alias.
 
 ### Troubleshooting weird error messages
 
 Normally if something is wrong dorfCAD will give you a nice error message that describes the problem.
-Unfortunately, if you've made a mistake in formatting the config or alias file, you'll instead get something terrible like `Failed Reading: Satisfy With". This usually means you've either got an extra or missing comma, but the JSON parsing library doesn't like to give helpful error messages so it might take some trial and error.
+Unfortunately, if you've made a mistake in formatting the config or alias file, you'll instead get something terrible like "Failed Reading: Satisfy With". This usually means you've either got an extra or missing comma, but the JSON parsing library doesn't like to give helpful error messages so it might take some trial and error.
