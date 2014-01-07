@@ -1,1 +1,2 @@
 FIXED incorrectly using a comma as a separator when quickfort expected a semicolon.
+CHANGED alias.json now contains aliases for most common commands.
