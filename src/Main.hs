@@ -19,9 +19,9 @@ import Config(CommandDictionary(..),constructDict)
 import ConvertImage(Blueprint,Phase(..),convertpngs,phrases)
 
 
-data Main = Main { start :: [Int], input :: [String],
+data Main = Main { start :: [Int],   input :: [String],
                    output :: String, phases :: String,
-                   repeat :: Int }
+                   repeat :: Int,    config :: String }
     deriving (Typeable, Data, Eq)
 
 instance Attributes Main where
@@ -45,7 +45,11 @@ instance Attributes Main where
                             ArgHelp "Int",
                             Short ['r'],
                             Long ["repeat"],
-                            Default (1::Int) ]
+                            Default (1::Int) ],
+        config         %> [ Help "Optional, specify a config file to use. Defaults to config.json",
+                            ArgHelp "PATH",
+                            Long ["config"],
+                            Default ("config.json"::String) ]
         ]
 
 instance RecordCommand Main where
@@ -54,8 +58,9 @@ instance RecordCommand Main where
 main = getArgs >>= executeR Main {} >>= \opts ->
     do
         aliasStr          <- L.readFile "alias.json"
-        configStr         <- L.readFile "config.json"
-        --don't bother to check if input files are valid, we want to fail if readFile fails
+        configStr         <- L.readFile (config opts)
+        -- don't bother to check if input files are valid, we want to exit if readFile fails
+        -- and we don't have any cleanup to do.
         imgFileStrs       <- mapM B.readFile (input opts)
         outStr            <- return $ genOutfileName ( head $ input opts) (output opts)
         blueprints        <- return $ go aliasStr configStr imgFileStrs opts
