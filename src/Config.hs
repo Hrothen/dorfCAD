@@ -49,8 +49,6 @@ instance FromJSON ConfigLists where
     parseJSON _          = mzero
 
 
-deriving instance Ord PixelRGB8
-
 
 constructDict :: L.ByteString -> L.ByteString -> Either String CommandDictionary
 constructDict alias config = do
