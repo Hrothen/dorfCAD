@@ -1,3 +1,8 @@
+Updates in version 1.2
+FIXED now compiles under ghc 7.10
+CHANGED start flag no longer requires double quotes around its arguments
+CHANGED each phase must be individually added with -p
+
 Updates in version 1.1
 
 FIXED incorrectly using a comma as a separator when quickfort expected a semicolon.
