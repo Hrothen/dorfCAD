@@ -18,61 +18,35 @@ import Config(CommandDictionary(..),constructDict)
 import ConvertImage(Blueprint,Phase(..),convertpngs,phrases)
 
 
-data Opts = Opts { start  :: [Int],  input  :: [String],
+data Opts = Opts { start  :: Maybe (Int,Int),  input  :: [String],
                    output :: String, phases :: String,
                    repeat :: Int,    config :: String }
-    deriving (Typeable, Data, Eq)
+    deriving (Typeable, Data, Eq, Show)
 
 options = Opts{ start  = def
-                       &= help "Start position of the macro."
                        &= typ "X,Y"
+                       &= help "Start position of the macro."
               , input  = def
                        &= args
+                       &= typFile
               , output = def
-                       &= help "Name to use for blueprints, if not specified uses input name"
                        &= typFile
+                       &= help "Output filename"
               , phases = def
+                       &= typ "[All|Dig|Build|Place|Query]"
+                       &= explicit
+                       &= name "phase" &= name "p"
                        &= help "Phase to create a blueprint for"
-                       &= typ "[All|Dig|Build|Place|Query] OR <phase>,<phase>,..."
-                       &= name "phase"
               , repeat = 1
-                       &= help "Optional, specifies a number of times to repeat the blueprint"
                        &= typ "INTEGER"
+                       &= help "Optional, specifies a number of times to repeat the blueprint"
               , config = "config.json"
-                       &= help "Specify a config file to use instead of the default"
                        &= typFile
+                       &= help "Specify a config file to use instead of the default"
               }
+              &= program "mkblueprint"
+              &= summary "dorfCAD v1.2, (C) Leif Grele 2014"
 
--- instance Attributes Main where
---     attributes _ = group "Options" [
---         start          %> [ Help "Start position of the macro.",
---                             ArgHelp "X,Y",
---                             Short ['s'],
---                             Long ["start"] ],
---         input          %> [ Help "Images to be converted to blueprints.",
---                             ArgHelp "FILENAME,FILENAME, ...",
---                             Extra True ],
---         output         %> [ Help "Name to use for blueprints, if not specified uses input name",
---                             ArgHelp "TEXT",
---                             Short ['o'],
---                             Long ["output"] ],
---         phases         %> [ Help "Phase to create a blueprint for.",
---                             ArgHelp "[All|Dig|Build|Place|Query] OR <phase>,<phase>,...",
---                             Long ["phase"],
---                             Short ['p'] ],
---         repeat         %> [ Help "Optional, specifies a number of times to repeat the blueprint",
---                             ArgHelp "Int",
---                             Short ['r'],
---                             Long ["repeat"],
---                             Default (1::Int) ],
---         config         %> [ Help "Optional, specify a config file to use. Defaults to config.json",
---                             ArgHelp "PATH",
---                             Long ["config"],
---                             Default ("config.json"::String) ]
---         ]
-
--- instance RecordCommand Main where
---     mode_summary _ = "Simple program to convert RGBA encoded .png images into quickfort blueprints"
 
 main = cmdArgs options >>= \opts ->
     do
@@ -99,16 +73,17 @@ main = cmdArgs options >>= \opts ->
                                 in do L.writeFile name img
         notDelimiter c = (c /= ',') && (c /= ' ')
 
+
 go :: L.ByteString -> L.ByteString -> [B.ByteString] -> Opts -> Either String [Blueprint]
 go alias config imgFiles opts = do
     dict     <- constructDict alias config
     imgStrs  <- mapM decodeImage imgFiles
     sequence $ convertpngs reps startPos imgStrs phaseList dict
   where
-    startPos  = toTup (start opts)
+    startPos  = start opts
     phaseList = phases opts
     reps      = repeat opts
-    toTup ls  | null ls = Nothing
+    {-toTup ls  | null ls = Nothing
               | length ls /= 2 = Nothing
               | otherwise = Just (head ls,last ls)
-
+-}
