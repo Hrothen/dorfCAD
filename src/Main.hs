@@ -11,51 +11,70 @@ import Data.Maybe(isNothing,fromJust)
 import Codec.Picture(decodeImage)
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.ByteString as B
-import System.Environment(getArgs)
-import System.Console.CmdLib
+import System.Console.CmdArgs
 import Control.Monad
 
 import Config(CommandDictionary(..),constructDict)
 import ConvertImage(Blueprint,Phase(..),convertpngs,phrases)
 
 
-data Main = Main { start :: [Int],   input :: [String],
+data Opts = Opts { start  :: [Int],  input  :: [String],
                    output :: String, phases :: String,
                    repeat :: Int,    config :: String }
     deriving (Typeable, Data, Eq)
 
-instance Attributes Main where
-    attributes _ = group "Options" [
-        start          %> [ Help "Start position of the macro.",
-                            ArgHelp "X,Y",
-                            Short ['s'],
-                            Long ["start"] ],
-        input          %> [ Help "Images to be converted to blueprints.",
-                            ArgHelp "FILENAME,FILENAME, ...",
-                            Extra True ],
-        output         %> [ Help "Name to use for blueprints, if not specified uses input name",
-                            ArgHelp "TEXT",
-                            Short ['o'],
-                            Long ["output"] ],
-        phases         %> [ Help "Phase to create a blueprint for.",
-                            ArgHelp "[All|Dig|Build|Place|Query] OR <phase>,<phase>,...",
-                            Long ["phase"],
-                            Short ['p'] ],
-        repeat         %> [ Help "Optional, specifies a number of times to repeat the blueprint",
-                            ArgHelp "Int",
-                            Short ['r'],
-                            Long ["repeat"],
-                            Default (1::Int) ],
-        config         %> [ Help "Optional, specify a config file to use. Defaults to config.json",
-                            ArgHelp "PATH",
-                            Long ["config"],
-                            Default ("config.json"::String) ]
-        ]
+options = Opts{ start  = def
+                       &= help "Start position of the macro."
+                       &= typ "X,Y"
+              , input  = def
+                       &= args
+              , output = def
+                       &= help "Name to use for blueprints, if not specified uses input name"
+                       &= typFile
+              , phases = def
+                       &= help "Phase to create a blueprint for"
+                       &= typ "[All|Dig|Build|Place|Query] OR <phase>,<phase>,..."
+                       &= name "phase"
+              , repeat = 1
+                       &= help "Optional, specifies a number of times to repeat the blueprint"
+                       &= typ "INTEGER"
+              , config = "config.json"
+                       &= help "Specify a config file to use instead of the default"
+                       &= typFile
+              }
 
-instance RecordCommand Main where
-    mode_summary _ = "Simple program to convert RGBA encoded .png images into quickfort blueprints"
+-- instance Attributes Main where
+--     attributes _ = group "Options" [
+--         start          %> [ Help "Start position of the macro.",
+--                             ArgHelp "X,Y",
+--                             Short ['s'],
+--                             Long ["start"] ],
+--         input          %> [ Help "Images to be converted to blueprints.",
+--                             ArgHelp "FILENAME,FILENAME, ...",
+--                             Extra True ],
+--         output         %> [ Help "Name to use for blueprints, if not specified uses input name",
+--                             ArgHelp "TEXT",
+--                             Short ['o'],
+--                             Long ["output"] ],
+--         phases         %> [ Help "Phase to create a blueprint for.",
+--                             ArgHelp "[All|Dig|Build|Place|Query] OR <phase>,<phase>,...",
+--                             Long ["phase"],
+--                             Short ['p'] ],
+--         repeat         %> [ Help "Optional, specifies a number of times to repeat the blueprint",
+--                             ArgHelp "Int",
+--                             Short ['r'],
+--                             Long ["repeat"],
+--                             Default (1::Int) ],
+--         config         %> [ Help "Optional, specify a config file to use. Defaults to config.json",
+--                             ArgHelp "PATH",
+--                             Long ["config"],
+--                             Default ("config.json"::String) ]
+--         ]
 
-main = getArgs >>= executeR Main {} >>= \opts ->
+-- instance RecordCommand Main where
+--     mode_summary _ = "Simple program to convert RGBA encoded .png images into quickfort blueprints"
+
+main = cmdArgs options >>= \opts ->
     do
         aliasStr          <- L.readFile "alias.json"
         configStr         <- L.readFile (config opts)
@@ -80,7 +99,7 @@ main = getArgs >>= executeR Main {} >>= \opts ->
                                 in do L.writeFile name img
         notDelimiter c = (c /= ',') && (c /= ' ')
 
-go :: L.ByteString -> L.ByteString -> [B.ByteString] -> Main -> Either String [Blueprint]
+go :: L.ByteString -> L.ByteString -> [B.ByteString] -> Opts -> Either String [Blueprint]
 go alias config imgFiles opts = do
     dict     <- constructDict alias config
     imgStrs  <- mapM decodeImage imgFiles

@@ -1,4 +1,6 @@
-{-# LANGUAGE StandaloneDeriving, OverloadedStrings #-}
+-- {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts #-}
 module Config (
     CommandDictionary(..),
     constructDict

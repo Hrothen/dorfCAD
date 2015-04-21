@@ -25,6 +25,6 @@ executable mkblueprint
                     vector >= 0.9,
                     containers >= 0.5,
                     JuicyPixels >= 3.0,
-                    cmdlib >= 0.3.5,
+                    cmdargs >= 0.10.12,
                     aeson >= 0.6.1.0,
                     regex-posix >= 0.92
