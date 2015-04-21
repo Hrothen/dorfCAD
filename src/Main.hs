@@ -83,7 +83,3 @@ go alias config imgFiles opts = do
     startPos  = start opts
     phaseList = phases opts
     reps      = repeat opts
-    {-toTup ls  | null ls = Nothing
-              | length ls /= 2 = Nothing
-              | otherwise = Just (head ls,last ls)
--}
