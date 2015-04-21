@@ -13,7 +13,7 @@ module ConvertImage(
 import Data.Typeable(Typeable)
 import Data.Data(Data)
 import Codec.Picture.Types
-import Data.List(unzip,intercalate,intersperse)
+import Data.List(intercalate)
 import Data.Maybe(isNothing,fromJust)
 import Data.Either(partitionEithers)
 import Data.Char(toLower,toUpper)
