@@ -1,25 +1,41 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, MultiParamTypeClasses,
-DeriveDataTypeable, OverloadedStrings, StandaloneDeriving #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module Main(main) where
 
 import Prelude hiding (repeat)
 
-import Data.Either(either)
-import Data.List(isSuffixOf)
-import Data.Maybe(isNothing,fromJust)
+import Data.List(intercalate)
+import Data.Char(toLower)
+import Data.Monoid((<>))
+import Data.Foldable(toList)
+import Data.Traversable(for)
+import Data.Maybe(fromJust)
 import Codec.Picture(decodeImage)
-import qualified Data.ByteString.Lazy.Char8 as L
+import Codec.Picture.Types
 import qualified Data.ByteString as B
+import Data.ByteString.Builder
 import System.Console.CmdArgs
+import System.IO(IOMode(WriteMode),withFile)
 import Control.Monad
 
-import Config(CommandDictionary(..),constructDict)
-import ConvertImage(Blueprint,Phase(..),convertpngs,phrases)
+import System.FilePath
+
+import qualified Data.Set as S
+import qualified Data.Map as M
+
+import qualified Data.Vector as V
+
+import ConvertImage(Position,buildCsv)
+import Types
 
 
 data Opts = Opts { start  :: Maybe (Int,Int),  input  :: [String],
-                   output :: String, phases :: String,
+                   output :: String, phases_ :: [Phase],
                    repeat :: Int,    config :: String }
     deriving (Typeable, Data, Eq, Show)
 
@@ -32,10 +48,14 @@ options = Opts{ start  = def
               , output = def
                        &= typFile
                        &= help "Output filename"
-              , phases = def
+              , phases_ = enum [ [] &= ignore
+                               , [Dig] &= name "dig"
+                               , [Build] &= name "build"
+                               , [Place] &= name "place"
+                               , [Query] &= name "query" ]
                        &= typ "[All|Dig|Build|Place|Query]"
                        &= explicit
-                       &= name "phase" &= name "p"
+                       -- &= name "phase" -- &= name "p"
                        &= help "Phase to create a blueprint for"
               , repeat = 1
                        &= typ "INTEGER"
@@ -47,39 +67,66 @@ options = Opts{ start  = def
               &= program "mkblueprint"
               &= summary "dorfCAD v1.2, (C) Leif Grele 2014"
 
+phases :: Opts -> [Phase]
+phases opts = phases' $ phases_ opts
+  where phases' [] = [Dig,Build,Place,Query]
+        phases' ps = filterDuplicates ps
+
+filterDuplicates :: Ord a => [a] -> [a]
+filterDuplicates = S.toList . S.fromList
+
 
 main = cmdArgs options >>= \opts ->
     do
-        aliasStr          <- L.readFile "alias.json"
-        configStr         <- L.readFile (config opts)
-        -- don't bother to check if input files are valid, we want to exit if readFile fails
-        -- and we don't have any cleanup to do.
-        imgFileStrs       <- mapM B.readFile (input opts)
-        outStr            <- return $ genOutfileName ( head $ input opts) (output opts)
-        blueprints        <- return $ go aliasStr configStr imgFileStrs opts
-        either (putStrLn) (mapM_ (writeFile' outStr)) blueprints
-  where 
-        genOutfileName i "" = (stripSuffix (head (words i))) ++ "-"
-        genOutfileName _ s  = s ++ "-"
+        images <- mapM B.readFile (V.fromList $ input opts)
 
-        stripSuffix ls | any (`isSuffixOf` ls) [".png",".bmp",".gif"] = take ((length ls) - 4) ls
-                       | ".tiff" `isSuffixOf` ls = take ((length ls) - 5) ls 
-                       | otherwise = ls
-        
-        writeFile' :: String -> Blueprint -> IO ()
-        writeFile' outStr img = let name = outStr ++
-                                           (L.unpack $ L.takeWhile (notDelimiter) (L.tail img)) ++
-                                           ".csv"
-                                in do L.writeFile name img
-        notDelimiter c = (c /= ',') && (c /= ' ')
+        dict <- decodePhaseMap <$> (B.readFile "alias.json") <*> B.readFile (config opts)
+
+        case (mapM decodeImage images,dict) of
+             (Left e1,Left e2) -> putStrLn e1 >> putStrLn (show e2)
+             (Left e1,Right _) -> putStrLn e1
+             (Right _,Left e2) -> putStrLn $ show e2
+             (Right i,Right d) -> go' i d opts
 
 
-go :: L.ByteString -> L.ByteString -> [B.ByteString] -> Opts -> Either String [Blueprint]
-go alias config imgFiles opts = do
-    dict     <- constructDict alias config
-    imgStrs  <- mapM decodeImage imgFiles
-    sequence $ convertpngs reps startPos imgStrs phaseList dict
-  where
-    startPos  = start opts
-    phaseList = phases opts
-    reps      = repeat opts
+setupEnv :: V.Vector DynamicImage -> Opts -> Env
+setupEnv images opts =
+    let img = V.head images
+        w = dynamicMap imageWidth img
+        h = dynamicMap imageHeight img
+
+        sep = stringUtf8 $ "#>" <> replicate w ',' <> "\n"
+
+    in (Env w h M.empty sep)
+
+go' :: V.Vector DynamicImage -> PhaseMap -> Opts -> IO ()
+go' images dict opts = do
+    let env  = setupEnv images opts
+        reps = repeat opts
+        pos  = start opts
+
+
+        csvs = for (phases opts) $ \p->
+            let b = buildCsv reps pos p images
+                e = env{px = fromJust $ M.lookup p dict}
+            in runEnvR b e
+
+    case csvs of
+        Left err -> print err
+        Right cs -> writeBlueprints opts cs
+
+writeBlueprints :: Foldable t => Opts -> t Builder -> IO ()
+writeBlueprints opts bps = do
+    let suffix p = '-':(map toLower $ show p)
+
+        filename = case output opts of
+                     "" -> takeBaseName (head $ input opts)
+                     n  -> n
+
+        outfile p = filename <> suffix p <.> "csv"
+
+        files = fmap outfile (phases opts)
+
+    mapM_ (\(n,f)-> withFile n WriteMode (flip hPutBuilder f)) $ zip files (toList bps)
+
+
