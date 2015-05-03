@@ -60,9 +60,11 @@ line p = do
           keys <- commaSep p
           return $ map (,v) keys
 
-
+-- merge maps A and B such that for (k,b) in B, if b is a key in A
+-- then the pair (k,A `lookup` b) is a key,value pair in C
+-- and if b is not a key in A, then the pair (k,b) is in C
 mergeMaps :: (Ord a) => Map a a -> Map b a -> Map b a
-mergeMaps a = M.mapMaybe (flip M.lookup a)
+mergeMaps a = M.map (\k -> M.findWithDefault k k a)
 
 
 phase = lexeme  (choice [ string "designate" >> return Dig
