@@ -55,7 +55,6 @@ options = Opts{ start  = def
                                , [Query] &= name "query" ]
                        &= typ "[All|Dig|Build|Place|Query]"
                        &= explicit
-                       -- &= name "phase" -- &= name "p"
                        &= help "Phase to create a blueprint for"
               , repeat = 1
                        &= typ "INTEGER"
@@ -72,6 +71,9 @@ phases opts = phases' $ phases_ opts
   where phases' [] = [Dig,Build,Place,Query]
         phases' ps = filterDuplicates ps
 
+
+-- remove all duplicate values in a list by converting it to a Set
+-- does not preserve order
 filterDuplicates :: Ord a => [a] -> [a]
 filterDuplicates = S.toList . S.fromList
 
@@ -86,34 +88,34 @@ main = cmdArgs options >>= \opts ->
              (Left e1,Left e2) -> putStrLn e1 >> putStrLn (show e2)
              (Left e1,Right _) -> putStrLn e1
              (Right _,Left e2) -> putStrLn $ show e2
-             (Right i,Right d) -> go' i d opts
+             (Right i,Right d) -> go i d opts
 
 
-setupEnv :: V.Vector DynamicImage -> Opts -> Env
-setupEnv images opts =
+setupEnv :: V.Vector DynamicImage -> Opts -> PixelMap -> Env
+setupEnv images opts pmap =
     let img = V.head images
         w = dynamicMap imageWidth img
         h = dynamicMap imageHeight img
 
         sep = stringUtf8 $ "#>" <> replicate w ',' <> "\n"
 
-    in (Env w h M.empty sep)
+    in (Env w h pmap sep)
 
-go' :: V.Vector DynamicImage -> PhaseMap -> Opts -> IO ()
-go' images dict opts = do
-    let env  = setupEnv images opts
-        reps = repeat opts
-        pos  = start opts
+go :: V.Vector DynamicImage -> PhaseMap -> Opts -> IO ()
+go images dict opts = do
+   let
+       reps = repeat opts
+       pos  = start opts
 
 
-        csvs = for (phases opts) $ \p->
-            let b = buildCsv reps pos p images
-                e = env{px = fromJust $ M.lookup p dict}
-            in runEnvR b e
+       csvs = for (phases opts) $ \p->
+           let b = buildCsv reps pos p images
+               e = setupEnv images opts (fromJust $ M.lookup p dict)
+           in runEnvR b e
 
-    case csvs of
-        Left err -> print err
-        Right cs -> writeBlueprints opts cs
+   case csvs of
+       Left err -> print err
+       Right cs -> writeBlueprints opts cs
 
 writeBlueprints :: Foldable t => Opts -> t Builder -> IO ()
 writeBlueprints opts bps = do

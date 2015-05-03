@@ -95,10 +95,8 @@ validateImageSize i = do
     let imgDims = (dynamicMap imageWidth i, dynamicMap imageHeight i)
     when (dims /= imgDims) $ throwError "Error: not all images have the same dimensions"
 
--- check that the image is convertible to rgba8
--- I could use JuicyPixels-utils and just load the image with
--- readRGBA8, but upscaling pixels as we map *should* be faster
--- than pixelMap, which makes a full copy of the image
+-- Convert an Image to RGBA8 or throw an error if the format doesn't
+-- allow upscaling
 validateImageFormat :: DynamicImage -> EnvR (Image PixelRGBA8)
 validateImageFormat (ImageY8    a) = return $ promoteImage a
 validateImageFormat (ImageYA8   a) = return $ promoteImage a
