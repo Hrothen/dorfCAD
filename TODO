@@ -2,7 +2,6 @@ Clean up code and comments
 Add option to interpret image list as top-down
 (x,y,z) start position?
 Look for config files in a standard location
-Make alias file optional, if a key isn't found in alias it should be merged verbatim
 VOXEL MODE
 
 Maybe add a mode to convert blueprints into images/voxels
