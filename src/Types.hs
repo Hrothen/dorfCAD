@@ -72,9 +72,9 @@ phase = lexeme  (choice [ string "designate" >> return Dig
         <* colon
 
 
-value = stringLiteral <* colon
+value = str <* colon
 
-str = stringLiteral
+str = stringLiteral <|> anyStr
 
 color = (try hex) <|> base10
 
@@ -100,7 +100,9 @@ comma = lexeme (char ',')
 
 commaSep p = lexeme (p `sepBy` comma)
 
-stringLiteral = do
+stringLiteral = B.pack <$> lexeme ( between (char '"') (char '"') (many anyChar) )
+
+anyStr = do
     s <- many $ noneOf ":,"
     return $ fst (B.spanEnd isSpace $ B.pack s)
 
