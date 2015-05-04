@@ -36,9 +36,16 @@ import ConvertImage(Position,buildCsv)
 import Types
 
 
-data Opts = Opts { start  :: Maybe (Int,Int),  input  :: [String],
-                   output :: String, phases_ :: [Phase],
-                   repeat :: Int,    config :: Maybe String }
+data Orientation = FromBottom | FromTop
+  deriving (Data, Eq, Show)
+
+data Opts = Opts { start   :: Maybe (Int,Int)
+                 , input   :: [String]
+                 , output  :: String
+                 , phases_ :: [Phase]
+                 , repeat  :: Int
+                 , config  :: Maybe String
+                 , order   :: Orientation }
     deriving (Typeable, Data, Eq, Show)
 
 options = Opts{ start  = def
@@ -64,6 +71,11 @@ options = Opts{ start  = def
               , config = def
                        &= typFile
                        &= help "Specify a config file to use instead of the default"
+              , order  = enum [ FromBottom &= name "from-bottom"
+                                           &= help "Order files from bottom to top"
+                              , FromTop    &= name "from-top"
+                                           &= help "Oder files from top to bottom" ]
+                       &= explicit
               }
               &= program "mkblueprint"
               &= summary "dorfCAD v1.2, (C) Leif Grele 2014"
@@ -99,11 +111,8 @@ loadConfigFiles opts = do
 main = cmdArgs options >>= \opts ->
     do
         images <- mapM B.readFile (V.fromList $ input opts)
-
-        --aliases <- B.readFile =<< getDataFileName "aliases"
-        --configF <- B.readFile =<< maybe (getDataFileName "config") return (config opts)
         (aliases, configF) <- loadConfigFiles opts
-        --dict <- decodePhaseMap <$> (B.readFile "aliases") <*> B.readFile (config opts)
+
         let dict = decodePhaseMap aliases configF
 
         case (mapM decodeImage images,dict) of
@@ -119,7 +128,9 @@ setupEnv images opts pmap =
         w = dynamicMap imageWidth img
         h = dynamicMap imageHeight img
 
-        sep = stringUtf8 $ "#>" <> replicate w ',' <> "\n"
+        sep = case order opts of
+          FromBottom -> stringUtf8 $ "#<" <> replicate w ',' <> "\n"
+          FromTop    -> stringUtf8 $ "#>" <> replicate w ',' <> "\n"
 
     in (Env w h pmap sep)
 
