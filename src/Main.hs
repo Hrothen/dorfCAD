@@ -4,17 +4,19 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Main(main) where
 
 import Prelude hiding (repeat)
+import Paths_dorfCAD
 
 import Data.List(intercalate)
 import Data.Char(toLower)
 import Data.Monoid((<>))
 import Data.Foldable(toList)
 import Data.Traversable(for)
-import Data.Maybe(fromJust)
+import Data.Maybe(fromJust, maybe)
 import Codec.Picture(decodeImage)
 import Codec.Picture.Types
 import qualified Data.ByteString as B
@@ -36,7 +38,7 @@ import Types
 
 data Opts = Opts { start  :: Maybe (Int,Int),  input  :: [String],
                    output :: String, phases_ :: [Phase],
-                   repeat :: Int,    config :: String }
+                   repeat :: Int,    config :: Maybe String }
     deriving (Typeable, Data, Eq, Show)
 
 options = Opts{ start  = def
@@ -59,12 +61,16 @@ options = Opts{ start  = def
               , repeat = 1
                        &= typ "INTEGER"
                        &= help "Optional, specifies a number of times to repeat the blueprint"
-              , config = "config.json"
+              , config = def -- "config.json"
                        &= typFile
                        &= help "Specify a config file to use instead of the default"
               }
               &= program "mkblueprint"
               &= summary "dorfCAD v1.2, (C) Leif Grele 2014"
+
+defAlias = "alias.json"
+defConfig = "config.json"
+
 
 phases :: Opts -> [Phase]
 phases opts = phases' $ phases_ opts
@@ -78,11 +84,27 @@ filterDuplicates :: Ord a => [a] -> [a]
 filterDuplicates = S.toList . S.fromList
 
 
+loadConfigFiles opts = do
+
+  aliases <- B.readFile =<< getDataFileName defAlias
+
+  cfg <- case config opts of
+           Nothing -> B.readFile =<< getDataFileName defConfig
+           Just c  -> B.readFile c
+
+  cfg <- B.readFile =<< maybe (getDataFileName defConfig) return (config opts)
+
+  return (aliases,cfg)
+
 main = cmdArgs options >>= \opts ->
     do
         images <- mapM B.readFile (V.fromList $ input opts)
 
-        dict <- decodePhaseMap <$> (B.readFile "alias.json") <*> B.readFile (config opts)
+        --aliases <- B.readFile =<< getDataFileName "alias.json"
+        --configF <- B.readFile =<< maybe (getDataFileName "config.json") return (config opts)
+        (aliases, configF) <- loadConfigFiles opts
+        --dict <- decodePhaseMap <$> (B.readFile "alias.json") <*> B.readFile (config opts)
+        let dict = decodePhaseMap aliases configF
 
         case (mapM decodeImage images,dict) of
              (Left e1,Left e2) -> putStrLn e1 >> putStrLn (show e2)
