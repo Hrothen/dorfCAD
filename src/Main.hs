@@ -71,7 +71,7 @@ options = Opts{ start  = def
                        &= typ "[All|Dig|Build|Place|Query]"
                        &= explicit
                        &= help "Phase to create a blueprint for"
-              , repeat = 1
+              , repeat = 0
                        &= typ "INTEGER"
                        &= help "Optional, specifies a number of times to repeat the blueprint"
               , config = def
@@ -174,7 +174,7 @@ advance h z = (z - 1) * (h + 1)
 
 -- flip z around
 invert :: Int -> Int -> V.Vector a -> Int
-invert z r v = (V.length v * r) - (z - 1)
+invert z r v = (V.length v * (r + 1)) - (z - 1)
 
 writeBlueprints :: Foldable t => Opts -> t Builder -> IO ()
 writeBlueprints opts bps = do

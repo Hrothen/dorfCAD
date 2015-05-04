@@ -111,6 +111,6 @@ buildCsv reps pos phase imgs = do
     body' <- imagesToBuilder imgs
     sep   <- seperator
 
-    let body = foldIntersperse sep $ V.replicate reps body'
+    let body = foldIntersperse sep $ V.replicate (reps + 1) body'
 
     return (h <> body)
