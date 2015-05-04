@@ -164,10 +164,13 @@ getPosition opts imgs = do
         dir = order opts
         height = dynamicMap imageHeight $ V.head imgs
 
-    if not (absPos opts) then return (x, y + advance height z)
-    else case order opts of
-        FromBottom -> return (x, y + (advance height $ invert z r imgs))
-        FromTop    -> return (x, y + advance height z)
+    if (z > V.length imgs * (1 + repeat opts) || z < 1)
+    then return (x,y) --If the z level is invalid just ignore it
+    else
+      if not (absPos opts) then return (x, y + advance height z)
+      else case order opts of
+          FromBottom -> return (x, y + (advance height $ invert z r imgs))
+          FromTop    -> return (x, y + advance height z)
 
 advance :: Int -> Int -> Int
 advance h z = (z - 1) * (h + 1)
