@@ -61,15 +61,15 @@ options = Opts{ start  = def
               , repeat = 1
                        &= typ "INTEGER"
                        &= help "Optional, specifies a number of times to repeat the blueprint"
-              , config = def -- "config.json"
+              , config = def
                        &= typFile
                        &= help "Specify a config file to use instead of the default"
               }
               &= program "mkblueprint"
               &= summary "dorfCAD v1.2, (C) Leif Grele 2014"
 
-defAlias = "alias.json"
-defConfig = "config.json"
+defAlias = "aliases"
+defConfig = "config"
 
 
 phases :: Opts -> [Phase]
@@ -100,10 +100,10 @@ main = cmdArgs options >>= \opts ->
     do
         images <- mapM B.readFile (V.fromList $ input opts)
 
-        --aliases <- B.readFile =<< getDataFileName "alias.json"
-        --configF <- B.readFile =<< maybe (getDataFileName "config.json") return (config opts)
+        --aliases <- B.readFile =<< getDataFileName "aliases"
+        --configF <- B.readFile =<< maybe (getDataFileName "config") return (config opts)
         (aliases, configF) <- loadConfigFiles opts
-        --dict <- decodePhaseMap <$> (B.readFile "alias.json") <*> B.readFile (config opts)
+        --dict <- decodePhaseMap <$> (B.readFile "aliases") <*> B.readFile (config opts)
         let dict = decodePhaseMap aliases configF
 
         case (mapM decodeImage images,dict) of
