@@ -39,7 +39,8 @@ import Types
 data Orientation = FromBottom | FromTop
   deriving (Data, Eq, Show)
 
-data Opts = Opts { start   :: Maybe (Int,Int)
+data Opts = Opts { start   :: Maybe (Int,Int,Int)
+                 , absPos  :: Bool
                  , input   :: [String]
                  , output  :: String
                  , phases_ :: [Phase]
@@ -49,8 +50,13 @@ data Opts = Opts { start   :: Maybe (Int,Int)
     deriving (Typeable, Data, Eq, Show)
 
 options = Opts{ start  = def
-                       &= typ "X,Y"
+                       &= typ "X,Y,Z"
                        &= help "Start position of the macro."
+              , absPos = True
+                       &= name "absolute-position"
+                       &= explicit
+                       &= typ "TRUE|FALSE"
+                       &= help "use top left corner as origin regardless of other flags"
               , input  = def
                        &= args
                        &= typFile
@@ -138,8 +144,7 @@ go :: V.Vector DynamicImage -> PhaseMap -> Opts -> IO ()
 go images dict opts = do
    let
        reps = repeat opts
-       pos  = start opts
-
+       pos = getPosition opts images
 
        csvs = for (phases opts) $ \p->
            let b = buildCsv reps pos p images
@@ -149,6 +154,27 @@ go images dict opts = do
    case csvs of
        Left err -> print err
        Right cs -> writeBlueprints opts cs
+
+
+getPosition :: Opts -> V.Vector DynamicImage -> Maybe (Int,Int)
+getPosition opts imgs = do
+    (x,y,z) <- start opts
+
+    let r = repeat opts
+        dir = order opts
+        height = dynamicMap imageHeight $ V.head imgs
+
+    if not (absPos opts) then return (x, y + advance height z)
+    else case order opts of
+        FromBottom -> return (x, y + (advance height $ invert z r imgs))
+        FromTop    -> return (x, y + advance height z)
+
+advance :: Int -> Int -> Int
+advance h z = (z - 1) * (h + 1)
+
+-- flip z around
+invert :: Int -> Int -> V.Vector a -> Int
+invert z r v = (V.length v * r) - (z - 1)
 
 writeBlueprints :: Foldable t => Opts -> t Builder -> IO ()
 writeBlueprints opts bps = do
