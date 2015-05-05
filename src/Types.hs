@@ -3,6 +3,8 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+
+
 module Types where
 
 import Data.Data
@@ -54,7 +56,7 @@ parseMap p = withBlock (\k m-> (k,M.fromList $ mconcat m)) phase (line p)
 line p = do
     l <- lexeme (manyTill anyChar endOfLine)
     let m = parse line' "" l
-    either (unexpected . show) (return) m
+    either (unexpected . show) return m
   where line' = do
           v    <- value
           keys <- commaSep p
@@ -132,8 +134,7 @@ lookupPixel = do --asks px >>= return . pxmap
     return (pxmap p)
 
 pxmap :: PixelMap -> (PixelRGBA8 -> Builder)
--- pxmap m = flip (M.findWithDefault emptyCell) m
-pxmap m = (\k-> M.findWithDefault emptyCell k m)
+pxmap m k = M.findWithDefault emptyCell k m
 
 seperator :: EnvR Builder
 seperator = asks s

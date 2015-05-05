@@ -1,7 +1,10 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, MultiParamTypeClasses,
-DeriveDataTypeable, OverloadedStrings, StandaloneDeriving #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE MonadComprehensions #-}
 {-# LANGUAGE GADTs #-}
+
+
 module ConvertImage(
       Position
     , buildCsv
@@ -9,8 +12,6 @@ module ConvertImage(
 
 import Control.Applicative((<**>))
 import Control.Monad(when)
-import Data.Typeable(Typeable)
-import Data.Data(Data)
 import Data.Foldable(fold)
 import Codec.Picture.Types
 import Data.List(intercalate)

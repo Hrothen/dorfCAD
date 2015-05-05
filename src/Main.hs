@@ -9,12 +9,12 @@ import Prelude hiding (repeat)
 import Paths_dorfCAD
 
 import Data.Either(rights)
-import Data.List(intercalate, uncons)
+import Data.List(intercalate)
 import Data.Char(toLower)
 import Data.Monoid((<>))
 import Data.Foldable(toList)
 import Data.Traversable(for)
-import Data.Maybe(fromJust, maybe, catMaybes)
+import Data.Maybe(fromJust, maybe)
 import Codec.Picture(decodeImage)
 import Codec.Picture.Types
 import qualified Data.ByteString as B
@@ -45,23 +45,11 @@ dorfMain opts = do
   let dict = decodePhaseMap aliases configF
 
   case (mapM decodeImage images,dict) of
-       (Left e1,Left e2) -> putStrLn e1 >> putStrLn (show e2)
+       (Left e1,Left e2) -> putStrLn e1 >> print e2
        (Left e1,Right _) -> putStrLn e1
-       (Right _,Left e2) -> putStrLn $ show e2
+       (Right _,Left e2) -> print e2
        (Right i,Right d) -> go i d opts
 
-
-setupEnv :: V.Vector DynamicImage -> Opts -> PixelMap -> Env
-setupEnv images opts pmap =
-    let img = V.head images
-        w = dynamicMap imageWidth img
-        h = dynamicMap imageHeight img
-
-        sep = case order opts of
-          FromBottom -> stringUtf8 $ "#<" <> replicate w ',' <> "\n"
-          FromTop    -> stringUtf8 $ "#>" <> replicate w ',' <> "\n"
-
-    in (Env w h pmap sep)
 
 go :: V.Vector DynamicImage -> PhaseMap -> Opts -> IO ()
 go images dict opts = do
@@ -79,6 +67,19 @@ go images dict opts = do
        Right cs -> writeBlueprints opts cs
 
 
+setupEnv :: V.Vector DynamicImage -> Opts -> PixelMap -> Env
+setupEnv images opts pmap =
+    let img = V.head images
+        w = dynamicMap imageWidth img
+        h = dynamicMap imageHeight img
+
+        sep = case order opts of
+          FromBottom -> stringUtf8 $ "#<" <> replicate w ',' <> "\n"
+          FromTop    -> stringUtf8 $ "#>" <> replicate w ',' <> "\n"
+
+    in Env w h pmap sep
+
+
 getPosition :: Opts -> V.Vector DynamicImage -> Maybe (Int,Int)
 getPosition opts imgs = do
     (x,y,z) <- start opts
@@ -87,12 +88,12 @@ getPosition opts imgs = do
         dir = order opts
         height = dynamicMap imageHeight $ V.head imgs
 
-    if (z > V.length imgs * (1 + repeat opts) || z < 1)
+    if z > V.length imgs * (1 + repeat opts) || z < 1
     then return (x,y) --If the z level is invalid just ignore it
     else
       if not (absPos opts) then return (x, y + advance height z)
       else case order opts of
-          FromBottom -> return (x, y + (advance height $ invert z r imgs))
+          FromBottom -> return (x, y + advance height (invert z r imgs))
           FromTop    -> return (x, y + advance height z)
 
 advance :: Int -> Int -> Int
@@ -104,7 +105,7 @@ invert z r v = (V.length v * (r + 1)) - (z - 1)
 
 writeBlueprints :: Foldable t => Opts -> t Builder -> IO ()
 writeBlueprints opts bps = do
-    let suffix p = '-':(map toLower $ show p)
+    let suffix p = '-': map toLower (show p)
 
         filename = case output opts of
                      "" -> takeBaseName (head $ input opts)
