@@ -19,6 +19,7 @@ executable mkblueprint
   hs-source-dirs:   src/
   other-modules:    ConvertImage,
                     Types,
+                    CommandLine,
                     Paths_dorfCAD
   default-language: Haskell2010
   build-depends:    base >= 4.8 && < 5,

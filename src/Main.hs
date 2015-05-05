@@ -1,10 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE LambdaCase #-}
+
 
 module Main(main) where
 
@@ -27,7 +24,6 @@ import System.IO(IOMode(WriteMode),withFile)
 import Control.Monad
 
 import System.FilePath
-import System.EasyFile(getAppUserDataDirectory, doesFileExist)
 
 import qualified Data.Set as S
 import qualified Data.Map as M
@@ -35,118 +31,24 @@ import qualified Data.Map as M
 import qualified Data.Vector as V
 
 import ConvertImage(Position,buildCsv)
+import CommandLine(Opts(..), Orientation(..),
+                   options, phases, loadConfigFiles)
 import Types
 
 
-data Orientation = FromBottom | FromTop
-  deriving (Data, Eq, Show)
+main = cmdArgs options >>= dorfMain
 
-data Opts = Opts { start   :: Maybe (Int,Int,Int)
-                 , absPos  :: Bool
-                 , input   :: [String]
-                 , output  :: String
-                 , phases_ :: [Phase]
-                 , repeat  :: Int
-                 , config  :: Maybe String
-                 , order   :: Orientation }
-    deriving (Typeable, Data, Eq, Show)
+dorfMain opts = do
+  images <- mapM B.readFile (V.fromList $ input opts)
+  (aliases, configF) <- loadConfigFiles opts
 
-options = Opts{ start  = def
-                       &= typ "X,Y,Z"
-                       &= help "Start position of the macro."
-              , absPos = True
-                       &= name "absolute-position"
-                       &= explicit
-                       &= typ "TRUE|FALSE"
-                       &= help "use top left corner as origin regardless of other flags"
-              , input  = def
-                       &= args
-                       &= typFile
-              , output = def
-                       &= typFile
-                       &= help "Output filename"
-              , phases_ = enum [ [] &= ignore
-                               , [Dig] &= name "dig"
-                               , [Build] &= name "build"
-                               , [Place] &= name "place"
-                               , [Query] &= name "query" ]
-                       &= typ "[All|Dig|Build|Place|Query]"
-                       &= explicit
-                       &= help "Phase to create a blueprint for"
-              , repeat = 0
-                       &= typ "INTEGER"
-                       &= help "Optional, specifies a number of times to repeat the blueprint"
-              , config = def
-                       &= typFile
-                       &= help "Specify a config file to use instead of the default"
-              , order  = enum [ FromBottom &= name "from-bottom"
-                                           &= help "Order files from bottom to top"
-                              , FromTop    &= name "from-top"
-                                           &= help "Oder files from top to bottom" ]
-                       &= explicit
-              }
-              &= program "mkblueprint"
-              &= summary "dorfCAD v1.2, (C) Leif Grele 2014"
+  let dict = decodePhaseMap aliases configF
 
-defAlias = "aliases"
-usrAlias = "aliases-user"
-defConfig = "config"
-usrConfig = "config-user"
-
-
-phases :: Opts -> [Phase]
-phases opts = phases' $ phases_ opts
-  where phases' [] = [Dig,Build,Place,Query]
-        phases' ps = filterDuplicates ps
-
-
--- remove all duplicate values in a list by converting it to a Set
--- does not preserve order
-filterDuplicates :: Ord a => [a] -> [a]
-filterDuplicates = S.toList . S.fromList
-
-
-loadConfigFiles :: Opts -> IO (B.ByteString,B.ByteString)
-loadConfigFiles opts = case config opts of
-  Nothing -> do
-    [a,c] <- loadDataFiles [[usrAlias,defAlias], [usrConfig,defConfig]]
-    return (a,c)
-  Just cfg -> do
-    c <- B.readFile cfg
-    [a] <- loadDataFiles [[usrAlias,defAlias]]
-    return (a,c)
-
-loadDataFiles :: [[FilePath]] -> IO [B.ByteString]
-loadDataFiles fs = sequence [ getAppUserDataDirectory "dorfCAD", getDataDir ]
-  >>= loadFilesWithFallbacks fs
-
-
-loadFilesWithFallbacks :: [[FilePath]] -> [FilePath] -> IO [B.ByteString]
-loadFilesWithFallbacks files dirs = for files $ \filenames -> do
-  validName <- catMaybes <$> mapM (searchDir filenames) dirs
-  if null validName
-  then error $ errmsg filenames
-  else B.readFile $ head validName
-
-    where errmsg fs = "Could not find file matching one of: " ++ unwords fs ++
-                      " in any of the directories: " ++ unwords dirs
-
-searchDir :: [FilePath] -> FilePath -> IO (Maybe FilePath)
-searchDir names dir = filterM (\n -> doesFileExist (dir </> n)) names
-                  >>= return . fmap fst . uncons
-
-main = cmdArgs options >>= \opts ->
-    do
-        images <- mapM B.readFile (V.fromList $ input opts)
-        (aliases, configF) <- loadConfigFiles opts
-
-        let dict = decodePhaseMap aliases configF
-
-        case (mapM decodeImage images,dict) of
-             (Left e1,Left e2) -> putStrLn e1 >> putStrLn (show e2)
-             (Left e1,Right _) -> putStrLn e1
-             (Right _,Left e2) -> putStrLn $ show e2
-             (Right i,Right d) -> go i d opts
+  case (mapM decodeImage images,dict) of
+       (Left e1,Left e2) -> putStrLn e1 >> putStrLn (show e2)
+       (Left e1,Right _) -> putStrLn e1
+       (Right _,Left e2) -> putStrLn $ show e2
+       (Right i,Right d) -> go i d opts
 
 
 setupEnv :: V.Vector DynamicImage -> Opts -> PixelMap -> Env
