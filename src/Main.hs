@@ -11,12 +11,13 @@ module Main(main) where
 import Prelude hiding (repeat)
 import Paths_dorfCAD
 
-import Data.List(intercalate)
+import Data.Either(rights)
+import Data.List(intercalate, uncons)
 import Data.Char(toLower)
 import Data.Monoid((<>))
 import Data.Foldable(toList)
 import Data.Traversable(for)
-import Data.Maybe(fromJust, maybe)
+import Data.Maybe(fromJust, maybe, catMaybes)
 import Codec.Picture(decodeImage)
 import Codec.Picture.Types
 import qualified Data.ByteString as B
@@ -26,6 +27,7 @@ import System.IO(IOMode(WriteMode),withFile)
 import Control.Monad
 
 import System.FilePath
+import System.EasyFile(getAppUserDataDirectory, doesFileExist)
 
 import qualified Data.Set as S
 import qualified Data.Map as M
@@ -87,7 +89,9 @@ options = Opts{ start  = def
               &= summary "dorfCAD v1.2, (C) Leif Grele 2014"
 
 defAlias = "aliases"
+usrAlias = "aliases-user"
 defConfig = "config"
+usrConfig = "config-user"
 
 
 phases :: Opts -> [Phase]
@@ -102,17 +106,34 @@ filterDuplicates :: Ord a => [a] -> [a]
 filterDuplicates = S.toList . S.fromList
 
 
-loadConfigFiles opts = do
+loadConfigFiles :: Opts -> IO (B.ByteString,B.ByteString)
+loadConfigFiles opts = case config opts of
+  Nothing -> do
+    [a,c] <- loadDataFiles [[usrAlias,defAlias], [usrConfig,defConfig]]
+    return (a,c)
+  Just cfg -> do
+    c <- B.readFile cfg
+    [a] <- loadDataFiles [[usrAlias,defAlias]]
+    return (a,c)
 
-  aliases <- B.readFile =<< getDataFileName defAlias
+loadDataFiles :: [[FilePath]] -> IO [B.ByteString]
+loadDataFiles fs = sequence [ getAppUserDataDirectory "dorfCAD", getDataDir ]
+  >>= loadFilesWithFallbacks fs
 
-  cfg <- case config opts of
-           Nothing -> B.readFile =<< getDataFileName defConfig
-           Just c  -> B.readFile c
 
-  cfg <- B.readFile =<< maybe (getDataFileName defConfig) return (config opts)
+loadFilesWithFallbacks :: [[FilePath]] -> [FilePath] -> IO [B.ByteString]
+loadFilesWithFallbacks files dirs = for files $ \filenames -> do
+  validName <- catMaybes <$> mapM (searchDir filenames) dirs
+  if null validName
+  then error $ errmsg filenames
+  else B.readFile $ head validName
 
-  return (aliases,cfg)
+    where errmsg fs = "Could not find file matching one of: " ++ unwords fs ++
+                      " in any of the directories: " ++ unwords dirs
+
+searchDir :: [FilePath] -> FilePath -> IO (Maybe FilePath)
+searchDir names dir = filterM (\n -> doesFileExist (dir </> n)) names
+                  >>= return . fmap fst . uncons
 
 main = cmdArgs options >>= \opts ->
     do

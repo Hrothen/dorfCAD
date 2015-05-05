@@ -5,3 +5,6 @@ module Paths_dorfCAD where
 
 getDataFileName :: FilePath -> IO FilePath
 getDataFileName = return
+
+getDataDir :: IO FilePath
+getDataDir = return mempty
