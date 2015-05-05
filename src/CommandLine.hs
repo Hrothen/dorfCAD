@@ -40,7 +40,7 @@ data Opts = Opts { start   :: Maybe (Int,Int,Int)
 options = Opts{ start  = def
                        &= typ "X,Y,Z"
                        &= help "Start position of the macro."
-              , absPos = True
+              , absPos = False
                        &= name "absolute-position"
                        &= explicit
                        &= typ "TRUE|FALSE"
@@ -65,10 +65,10 @@ options = Opts{ start  = def
               , config = def
                        &= typFile
                        &= help "Specify a config file to use instead of the default"
-              , order  = enum [ FromBottom &= name "from-bottom"
-                                           &= help "Order files from bottom to top"
-                              , FromTop    &= name "from-top"
-                                           &= help "Oder files from top to bottom" ]
+              , order  = enum [ FromTop    &= name "from-top"
+                                           &= help "Order files from top to bottom"
+                              , FromBottom &= name "from-bottom"
+                                           &= help "Order files from bottom to top" ]
                        &= explicit
               }
               &= program "mkblueprint"
