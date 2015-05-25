@@ -50,7 +50,7 @@ phaseUtf8 Query = stringUtf8 "query"
 
 header :: Position -> Phase -> Int -> Builder
 header pos phase width = let
-  buffer = stringUtf8 $ flip replicate ',' $ (width - 1)
+  buffer = stringUtf8 $ flip replicate ',' (width - 1)
 
   start = maybe mempty (\p->stringUtf8 " start" <> renderTuple p) pos
   phs   = phaseUtf8 phase
@@ -82,22 +82,8 @@ chunkToBuilder f s vox = voxelFoldSlice worker mempty vox
                 | otherwise = charUtf8 ','
 
 
--- imagesToBuilder :: V.Vector DynamicImage -> EnvR Builder
 voxelsToBuilder :: FlatVoxelChunk PixelRGBA8 -> EnvR Builder
 voxelsToBuilder vox = chunkToBuilder <$> lookupPixel <*> seperator <*> pure vox
--- do
-    -- sep    <- seperator
-    -- pxlook <- lookupPixel
-
-    -- imgs <- mapM validateImage images
-
-    -- let slices    = fmap (imageToBuilder pxlook) imgs
-    --     blueprint = foldIntersperse sep slices
-    -- return $ chunkToBuilder pxlook sep vox
-
-
-   -- return blueprint
-
 
 
 buildCsv :: Int -> Position -> Phase -> FlatVoxelChunk PixelRGBA8 -> EnvR Builder

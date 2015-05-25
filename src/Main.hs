@@ -48,43 +48,28 @@ import Voxels.QB
 
 main = cmdArgs options >>= dorfMain
 
-{-dorfMain opts = do
-  images <- mapM B.readFile (V.fromList $ input opts)
-  (aliases, configF) <- loadConfigFiles opts
-
-  let dict = decodePhaseMap aliases configF
-
-  case (mapM decodeImage images,dict) of
-       (Left e1,Left e2) -> putStrLn e1 >> print e2
-       (Left e1,Right _) -> putStrLn e1
-       (Right _,Left e2) -> print e2
-       (Right i,Right d) -> go i d opts-}
 
 dorfMain opts = do
   dta <- mapM B.readFile (V.fromList $ input opts)
   (aliases, configF) <- loadConfigFiles opts
 
-  {-let dict = decodePhaseMap aliases configF
+  let csv' = do
+        dict <- errText (decodePhaseMap aliases configF)
 
-      csv' = case mode opts of
-        VoxelMode -> loadVoxels dta >>= voxCSV opts dict
-        ImageMode -> loadImages dta >>= voxCSV opts dict-}
+        case mode opts of
+          VoxelMode -> loadVoxels dta >>= voxCSV opts dict
+          ImageMode -> loadImages dta >>= voxCSV opts dict
 
-  let csv' = do{
-    dict <- errText (decodePhaseMap aliases configF);
-
-    case mode opts of
-      VoxelMode -> loadVoxels dta >>= voxCSV opts dict;
-      ImageMode -> loadImages dta >>= voxCSV opts dict
-      }
 
   case csv' of
     Left  err -> print err
     Right csv -> writeBlueprints opts csv
 
+
 -- convert error types
 errText :: Show a => Either a b -> Either Text b
 errText = first (T.pack . show)
+
 
 loadVoxels :: Vector ByteString -> Either Text (FlatVoxelChunk PixelRGBA8)
 loadVoxels dta | length dta == 1 = errText $ decodeQBTree $ V.head dta
@@ -115,6 +100,7 @@ validateImages images = let w = dynamicMap imageWidth  $ V.head images
                             h = dynamicMap imageHeight $ V.head images
                         in mapM (validateImage (w,h)) images
 
+
 -- extracts an Image from a DynamicImage that matches
 -- the required dimensions and format
 validateImage :: (Int,Int) -> DynamicImage -> Either Text (Image PixelRGBA8)
@@ -124,9 +110,11 @@ validateImage dims i = validateImageSize dims i >> validateImageFormat i
 validateImageSize :: (Int,Int) -> DynamicImage -> Either Text ()
 validateImageSize dims i = do
     let imgDims = (dynamicMap imageWidth i, dynamicMap imageHeight i)
-    if (dims /= imgDims)
+    if dims /= imgDims
       then Left "Error: not all images have the same dimensions"
       else Right ()
+
+
 -- Convert an Image to RGBA8 or throw an error if the format doesn't
 -- allow upscaling
 validateImageFormat :: DynamicImage -> Either Text (Image PixelRGBA8)
@@ -148,33 +136,6 @@ voxCSV opts dict vxs = do
     in runEnvR b e
 
 
-{-go :: V.Vector DynamicImage -> PhaseMap -> Opts -> IO ()
-go images dict opts = do
-   let
-       reps = repeat opts
-       pos = getPosition opts images
-
-       csvs = for (phases opts) $ \p->
-           let b = buildCsv reps pos p images
-               e = setupEnv images opts (fromJust $ M.lookup p dict)
-           in runEnvR b e
-
-   case csvs of
-       Left err -> print err
-       Right cs -> writeBlueprints opts cs-}
-
-
--- setupEnv :: V.Vector DynamicImage -> Opts -> PixelMap -> Env
-{-setupEnv images opts pmap =
-    let img = V.head images
-        w = dynamicMap imageWidth img
-        h = dynamicMap imageHeight img
-
-        sep = case order opts of
-          FromBottom -> stringUtf8 $ "#<" <> replicate w ',' <> "\n"
-          FromTop    -> stringUtf8 $ "#>" <> replicate w ',' <> "\n"
-
-    in Env w h pmap sep-}
 setupEnv :: VoxelSpace v => v a -> Opts -> PixelMap -> Env
 setupEnv vox opts pmap = Env pmap sep
   where w = width vox
@@ -183,22 +144,6 @@ setupEnv vox opts pmap = Env pmap sep
           FromBottom -> stringUtf8 $ "#<" <> replicate (w - 1) ',' <> "\n"
           FromTop    -> stringUtf8 $ "#>" <> replicate (w - 1) ',' <> "\n"
 
-
-{-getPosition :: Opts -> V.Vector DynamicImage -> Maybe (Int,Int)
-getPosition opts imgs = do
-    (x,y,z) <- start opts
-
-    let r = repeat opts
-        dir = order opts
-        height = dynamicMap imageHeight $ V.head imgs
-
-    if z > V.length imgs * (1 + repeat opts) || z < 1
-    then return (x,y) --If the z level is invalid just ignore it
-    else
-      if not (absPos opts) then return (x, y + advance height z)
-      else case order opts of
-          FromBottom -> return (x, y + advance height (invert z r imgs))
-          FromTop    -> return (x, y + advance height z)-}
 
 getPosition :: VoxelSpace v => Opts -> v a -> Maybe (Int,Int)
 getPosition opts vox = do

@@ -28,16 +28,17 @@ data FlatVoxelChunk a = FlatVoxelChunk { voxelWidth  :: Word32 --x
                                        , voxelData   :: Vector a }
 
 -- fold over a Voxel Chunk as a collection of horizontal slices
+-- this is not a good implementation
 voxelFoldSlice :: (a -> Int -> Int -> Int -> b -> a) -> a -> FlatVoxelChunk b -> a
 voxelFoldSlice f acc v = case orientation v of
-  CGLeft -> foofold f acc v
-  CGRight -> foofold f acc v
+  CGLeft -> cgfold f acc v
+  CGRight -> cgfold f acc v
   ULeft -> ifold' f acc v
   URight -> ifold' f acc v
 
 
-foofold f a (FlatVoxelChunk w h d o v) =
-  let transformedMat = V.fromList [v V.! (fromIntegral (x + z*w + y*w*d)) | z <- [0..d-1], x <- [0..w-1], y <- [0..h-1]]
+cgfold f a (FlatVoxelChunk w h d o v) =
+  let transformedMat = V.fromList [v V.! fromIntegral (x + z*w + y*w*d) | z <- [0..d-1], x <- [0..w-1], y <- [0..h-1]]
   in ifold' f a (FlatVoxelChunk w d h o transformedMat)
 
 
@@ -64,14 +65,3 @@ instance VoxelSpace FlatVoxelChunk where
     where
       f' acc i v = let (x,y,z) = indexTo3D i (width vs) (height vs) (depth vs)
                    in f acc x y z v
-
-{-
-type ImageVector a = Vector (Image a)
-
-instance VoxelSpace (Vector Image) where
-  width  = imageWidth  . V.head
-  height = imageHeight . V.head
-  depth  = V.length
-
-  ifold' f acc vs = V.ifoldl' foldSlice acc vs
-    where foldSlice a z i = pixelFold (\a x y v-> f a x y z v) a i-}

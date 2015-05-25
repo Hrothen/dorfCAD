@@ -117,22 +117,16 @@ anyStr = do
 -- string to put in empty cells, quickfort accepts an empty string, "~", or "`" here
 emptyCell = "~"
 
--- data Env = Env{ _width :: Int, _height :: Int, px :: PixelMap, s :: Builder}
+
 data Env = Env{ px :: PixelMap, s :: Builder}
 type EnvR = ExceptT Text (Reader Env)
 
 runEnvR e = runReader (runExceptT e)
 
--- width :: EnvR Int
--- width = asks _width
-
--- height :: EnvR Int
--- height = asks _height
 
 lookupPixel :: EnvR (PixelRGBA8 -> Builder)
-lookupPixel = pxmap <$> asks px -- do --asks px >>= return . pxmap
-    -- p <- asks px
-    -- return (pxmap p)
+lookupPixel = pxmap <$> asks px
+
 
 pxmap :: PixelMap -> (PixelRGBA8 -> Builder)
 pxmap m k = M.findWithDefault emptyCell k m

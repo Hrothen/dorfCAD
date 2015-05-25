@@ -128,8 +128,7 @@ getQBChunk = do
 
 getMatrix (QBinfo _ fmt _ cmp _ _) = do
   name <- getByteString . fromIntegral =<< getWord8
-  --error (show name)
-  -- getWord8 >>= skip . fromIntegral -- skip the matrix name, we don't use it
+
   sizeX <- getWord32le
   sizeY <- getWord32le
   sizeZ <- getWord32le
@@ -145,9 +144,6 @@ getMatrix (QBinfo _ fmt _ cmp _ _) = do
     RLE  -> getMatrixRLE size fmt
 
   return $ Matrix name (sizeX,sizeY,sizeZ) (posX,posY,posZ) matrix
-
---readChunk (x',y'z') = do
---  let indicies = [x + y*x' + z*x'*y' | z <- [0..z'-1], y <- [0..y'-1], x <- [0..x'-1]
 
 
 --
@@ -194,18 +190,10 @@ flatten (x',y',z') mats | null mats = mempty
   chunk <- MV.replicate (x*y*z) (qbDecode RGBA 0)
 
   for mats $ \m ->
-    V.sequence $ V.imap (\i v-> MV.unsafeWrite chunk (localToGlobal (x,y,z) i m) v) $ (voxels m)
+    V.sequence $ V.imap (\i v-> MV.unsafeWrite chunk (localToGlobal (x,y,z) i m) v) (voxels m)
 
   V.unsafeFreeze chunk
 
-
--- localToGlobal :: (Int,Int,Int) -> Int -> Matrix a -> Int
--- localToGlobal (w,h,d) i (Matrix (sx,sy,sz) (px,py,pz) _) = z'*w*h + y'*w + x'
---  where (x',y',z') = (x+xi,y+yi,z+zi)
---        (zi,y'')   = i `quotRem` (sx * sy)
---        xi = i `mod` sx
---        yi = y'' `quot` sx
---         -- zi = i `quot` (sx * sy)
 
 localToGlobal (w,h,d) i (Matrix _ (mw,mh,md) (mx,my,mz) _) = z*w*h + y*w + x
   where (x,y,z) = (x'+mx,y'+my,z'+mz)
