@@ -2,6 +2,7 @@
 module CommandLine(
       Opts(..)
     , Orientation(..)
+    , InputMode(..)
     , options
     , phases
     , loadConfigFiles
@@ -34,8 +35,12 @@ data Opts = Opts { start   :: Maybe (Int,Int,Int)
                  , phases_ :: [Phase]
                  , repeat  :: Int
                  , config  :: Maybe String
-                 , order   :: Orientation }
+                 , order   :: Orientation
+                 , mode    :: InputMode}
     deriving (Typeable, Data, Eq, Show)
+
+data InputMode = ImageMode | VoxelMode
+  deriving (Typeable, Data, Eq, Show)
 
 options = Opts{ start  = def
                        &= typ "X,Y,Z"
@@ -69,6 +74,11 @@ options = Opts{ start  = def
                                            &= help "Order files from top to bottom"
                               , FromBottom &= name "from-bottom"
                                            &= help "Order files from bottom to top" ]
+                       &= explicit
+              , mode   = enum [ ImageMode &= name "image-mode"
+                                          &= help "operate on a sequence of images"
+                              , VoxelMode &= name "voxel-mode"
+                                          &= help "operate on a single voxel data file"]
                        &= explicit
               }
               &= program "mkblueprint"
@@ -121,5 +131,5 @@ loadFilesWithFallbacks files dirs = for files $ \filenames -> do
                       " in any of the directories: " ++ unwords dirs
 
 searchDir :: [FilePath] -> FilePath -> IO (Maybe FilePath)
-searchDir names dir = filterM (\n -> doesFileExist (dir </> n)) names
+searchDir names dir = filterM doesFileExist (fmap (dir</>) names)
                   >>= return . fmap fst . uncons

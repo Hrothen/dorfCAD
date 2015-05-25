@@ -34,6 +34,7 @@ import qualified Data.Map.Strict as M
 import qualified Data.Vector as V
 
 import Types
+import Voxels.Types
 
 type Position = Maybe (Int,Int)
 
@@ -47,14 +48,14 @@ phaseUtf8 Build = stringUtf8 "build"
 phaseUtf8 Place = stringUtf8 "place"
 phaseUtf8 Query = stringUtf8 "query"
 
-headerE :: Position -> Phase -> EnvR Builder
-headerE pos phase = do
-    buffer <- stringUtf8 . flip replicate ',' <$> width
+header :: Position -> Phase -> Int -> Builder
+header pos phase width = let
+  buffer = stringUtf8 $ flip replicate ',' $ (width - 1)
 
-    let start = maybe mempty (\p->stringUtf8 " start" <> renderTuple p) pos
-        phs   = phaseUtf8 phase
+  start = maybe mempty (\p->stringUtf8 " start" <> renderTuple p) pos
+  phs   = phaseUtf8 phase
 
-    return $ charUtf8 '#' <> phs <> start <> buffer <> charUtf8 '\n'
+    in charUtf8 '#' <> phs <> start <> buffer <> charUtf8 '\n'
 
 renderTuple :: (Int,Int) -> Builder
 renderTuple (x,y) = charUtf8 '(' <> intDec x <> charUtf8 ';'
@@ -71,47 +72,47 @@ imageToBuilder f img = pixelFold worker mempty img
                 | otherwise               = charUtf8 ','
 
 
-imagesToBuilder :: V.Vector DynamicImage -> EnvR Builder
-imagesToBuilder images = do
-    sep    <- seperator
-    pxlook <- lookupPixel
-
-    imgs <- mapM validateImage images
-
-    let slices    = fmap (imageToBuilder pxlook) imgs
-        blueprint = foldIntersperse sep slices
-
-    return blueprint
+chunkToBuilder :: Pixel p => (p -> Builder) -> Builder -> FlatVoxelChunk p -> Builder
+chunkToBuilder f s vox = voxelFoldSlice worker mempty vox
+  where worker acc x y z p = acc <> sep <> f p <> delim
+          where
+          sep | x == 0 && y == 0 && z /= 0 = s
+              | otherwise = mempty
+          delim | x == width vox - 1 = charUtf8 '\n'
+                | otherwise = charUtf8 ','
 
 
--- extracts an Image from a DynamicImage that matches
--- the required dimensions and format
-validateImage :: DynamicImage -> EnvR (Image PixelRGBA8)
-validateImage i = validateImageSize i >> validateImageFormat i
+-- imagesToBuilder :: V.Vector DynamicImage -> EnvR Builder
+voxelsToBuilder :: FlatVoxelChunk PixelRGBA8 -> EnvR Builder
+voxelsToBuilder vox = chunkToBuilder <$> lookupPixel <*> seperator <*> pure vox
+-- do
+    -- sep    <- seperator
+    -- pxlook <- lookupPixel
+
+    -- imgs <- mapM validateImage images
+
+    -- let slices    = fmap (imageToBuilder pxlook) imgs
+    --     blueprint = foldIntersperse sep slices
+    -- return $ chunkToBuilder pxlook sep vox
 
 
-validateImageSize :: DynamicImage -> EnvR ()
-validateImageSize i = do
-    dims <- (,) <$> width <*> height
-    let imgDims = (dynamicMap imageWidth i, dynamicMap imageHeight i)
-    when (dims /= imgDims) $ throwError "Error: not all images have the same dimensions"
-
--- Convert an Image to RGBA8 or throw an error if the format doesn't
--- allow upscaling
-validateImageFormat :: DynamicImage -> EnvR (Image PixelRGBA8)
-validateImageFormat (ImageY8    a) = return $ promoteImage a
-validateImageFormat (ImageYA8   a) = return $ promoteImage a
-validateImageFormat (ImageRGB8  a) = return $ promoteImage a
-validateImageFormat (ImageRGBA8 a) = return a
-validateImageFormat _              = throwError "Error: one or more images are not encoded in RGBA8 color"
+   -- return blueprint
 
 
-buildCsv :: Int -> Position -> Phase -> V.Vector DynamicImage -> EnvR Builder
-buildCsv reps pos phase imgs = do
-    h     <- headerE pos phase
-    body' <- imagesToBuilder imgs
+
+buildCsv :: Int -> Position -> Phase -> FlatVoxelChunk PixelRGBA8 -> EnvR Builder
+buildCsv reps pos phase vox = do
+
+    body' <- voxelsToBuilder vox
     sep   <- seperator
 
-    let body = foldIntersperse sep $ V.replicate (reps + 1) body'
+    let h    = header pos phase (width vox)
+        body = foldIntersperse sep $ V.replicate (reps + 1) body'
 
     return (h <> body)
+
+--------------------------------------------------------------------------------
+--- | experiment
+
+--imageToVector :: Image PixelRGBA8 -> Vector PixelRGBA8
+--imageToVector = fmap unpackPixel . uncurry unsafeFromForeignPtr0 . first castForeignPtr . unsafeToForeignPtr0 . imageData
